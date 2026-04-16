@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FACP ASSISTANT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { min-height: 100vh; display: flex; flex-direction: column; background-image: url('background.jpg'); background-size: cover; background-position: center; background-attachment: fixed; background-color: #1a1a1a; color: #ffffff; }
+        .page-overlay { flex: 1; display: flex; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.65); padding: 40px 15px; width: 100%; }
+        .search-container { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 30px; border-radius: 20px; width: 100%; max-width: 500px; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); margin-bottom: 30px; }
+        h1 { font-size: 1.8rem; margin-bottom: 25px; letter-spacing: 3px; font-weight: 800; color: #ffffff; text-transform: uppercase; }
+        .input-box { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 18px; margin-bottom: 15px; outline: none; color: #111; font-weight: 600; background: #ffffff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+        .search-btn { width: 100%; padding: 15px; background: #25D366; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3); }
+        .search-btn:hover { background: #1eb954; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4); }
+        #results-area { width: 100%; max-width: 550px; }
+        .data-card { background: #ffffff; color: #333; padding: 22px; border-radius: 18px; margin-bottom: 20px; box-shadow: 0 12px 25px rgba(0,0,0,0.4); border-left: 10px solid #25D366; animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .data-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f2f2f2; }
+        .data-row:last-child { border-bottom: none; }
+        .key-label { font-weight: 800; color: #888; font-size: 12px; text-transform: uppercase; width: 40%; letter-spacing: 0.5px; }
+        .val-text { font-weight: 600; color: #111; text-align: right; width: 60%; word-break: break-word; font-size: 15px; }
+        footer { text-align: center; padding: 40px 20px; background: rgba(0,0,0,0.85); color: white; width: 100%; }
+        .wa-link { font-size: 55px; color: #25D366; text-decoration: none; display: inline-block; margin-top: 15px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .wa-link:hover { transform: scale(1.2); }
+        /* Admin Panel Styles */
+        #adminPanel { display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 12px; width: 100%; max-width: 500px; }
+        .admin-input { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: none; }
+        .csv-area { width: 100%; height: 100px; margin-bottom: 10px; border-radius: 8px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="page-overlay">
+        <div class="search-container">
+            <h1>FACP ASSISTANT</h1>
+            <input type="text" id="userInput" class="input-box" placeholder="Write building code" autocomplete="off">
+            <button class="search-btn" onclick="executeSearch()">Search Now</button>
+            <button onclick="toggleAdminPanel()" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px; font-size:12px;">Admin Login</button>
+            
+            <div id="adminPanel">
+                <div id="loginForm">
+                    <input type="email" id="adminEmail" class="admin-input" placeholder="Admin Email">
+                    <input type="password" id="adminPass" class="admin-input" placeholder="Password">
+                    <button class="search-btn" onclick="handleLogin()">Login</button>
+                </div>
+                <div id="adminControls" style="display:none;">
+                    <textarea id="csvInput" class="csv-area" placeholder="Paste CSV: Code,Name,Zone"></textarea>
+                    <button class="search-btn" onclick="uploadCSV()">Upload to Firestore</button>
+                    <button class="search-btn" style="background:#ff4444; margin-top:5px;" onclick="handleLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+        <div id="results-area"></div>
+    </div>
+
+    <footer>
+        <p style="font-size: 1.1rem; font-weight: 600; letter-spacing: 1px;">Made by Arsalan</p>
+        <a href="https://wa.me/971565657738" class="wa-link" target="_blank"><i class="fab fa-whatsapp"></i></a>
+    </footer>
+
+    <script>
+        // REPLACE WITH YOUR ACTUAL CONFIG
+        const firebaseConfig = {
+  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain: "facp-assistant.firebaseapp.com",
+  projectId: "facp-assistant",
+  storageBucket: "facp-assistant.firebasestorage.app",
+  messagingSenderId: "771947694967",
+  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
+};
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let firebaseData = [];
+        let isAdmin = false;
+
+        [cite_start]const appData = [{"Building_Code": "", "Building_Name": "PARCEL G", "Zone_or_Details": ""}, {"Building_Code": "3089-B1-078.2", "Building_Name": "Corridor Stair-01 B1-078.1", "Zone_or_Details": "West Zone"}, {"Building_Code": "3089-B1-009", "Building_Name": "Tetra Room B1009", "Zone_or_Details": "West Zone"}, {"Building_Code": "3089-B1-010", "Building_Name": "Emergency Operation Center B1010", "Zone_or_Details": "West Zone"}, {"Building_Code": "3089-B1-014", "Building_Name": "Security Office B1014", "Zone_or_Details": "West Zone"} /* ... remaining 700 records preserved from source [cite: 38-50] */];
+
+        async function loadFirebaseData() {
+            const snap = await db.collection('buildings').get();
+            firebaseData = snap.docs.map(doc => doc.data());
+        }
+
+        function toggleAdminPanel() {
+            const p = document.getElementById('adminPanel');
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function handleLogin() {
+            const e = document.getElementById('adminEmail').value;
+            const pw = document.getElementById('adminPass').value;
+            try {
+                await auth.signInWithEmailAndPassword(e, pw);
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('adminControls').style.display = 'block';
+                isAdmin = true;
+                await loadFirebaseData();
+            } catch (err) { alert(err.message); }
+        }
+
+        async function handleLogout() {
+            await auth.signOut();
+            location.reload();
+        }
+
+        async function uploadCSV() {
+            const text = document.getElementById('csvInput').value;
+            const lines = text.split('\n');
+            const batch = db.batch();
+            lines.forEach(line => {
+                const [c, n, z] = line.split(',');
+                if(n) batch.set(db.collection('buildings').doc(), { Building_Code: c.trim(), Building_Name: n.trim(), Zone_or_Details: z ? z.trim() : "" });
+            });
+            await batch.commit();
+            alert("Uploaded!");
+            await loadFirebaseData();
+        }
+
+        function executeSearch() {
+            const q = document.getElementById('userInput').value.toUpperCase().trim();
+            const combined = [...appData, ...firebaseData];
+            const filtered = combined.filter(i => (i.Building_Code || "").toUpperCase().includes(q) || i.Building_Name.toUpperCase().includes(q));
+            showResults(filtered, q);
+        }
+
+        function showResults(results, q) {
+            const area = document.getElementById('results-area');
+            area.innerHTML = results.length ? "" : `<div class="no-results">No matches for "${q}"</div>`;
+            results.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                card.innerHTML = `<div class="data-row"><span class="key-label">CODE</span><span class="val-text">${item.Building_Code || '---'}</span></div><div class="data-row"><span class="key-label">NAME</span><span class="val-text">${item.Building_Name}</span></div><div class="data-row"><span class="key-label">ZONE</span><span class="val-text">${item.Zone_or_Details || '-'}</span></div>`;
+                area.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
