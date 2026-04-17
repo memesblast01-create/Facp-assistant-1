@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ADMIN PANEL</title>
+<title>Admin Dashboard</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -15,73 +15,127 @@ body{
   font-family:Arial;
   background:url("background.jpg") center/cover fixed;
 }
+
 .overlay{
   min-height:100vh;
-  background:rgba(0,0,0,0.7);
   display:flex;
   justify-content:center;
+  align-items:center;
+  background:rgba(0,0,0,0.65);
   padding:20px;
 }
-.panel{
+
+/* MAIN CARD */
+.card{
   width:100%;
-  max-width:520px;
-  background:white;
+  max-width:650px;
+  background:#fff;
+  border-radius:16px;
   padding:20px;
-  border-radius:15px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3);
 }
+
+/* LOGIN */
 input,button,select{
   width:100%;
   padding:12px;
   margin-top:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:14px;
 }
+
 button{
   background:#25D366;
   color:white;
   border:none;
   cursor:pointer;
+  font-weight:bold;
 }
-.red{
-  background:red !important;
+
+.red{background:red !important}
+
+/* SECTIONS */
+.hidden{display:none}
+
+.header{
+  text-align:center;
+  font-weight:bold;
+  font-size:18px;
+  margin-bottom:10px;
 }
+
+/* DATA LIST */
 .item{
+  background:#f7f7f7;
   padding:10px;
-  border-bottom:1px solid #ddd;
+  border-radius:10px;
+  margin-top:10px;
 }
-small{color:#555}
+
+small{color:#666}
+
+.row-btn{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
+}
+
+.row-btn button{
+  flex:1;
+}
 </style>
 </head>
 
 <body>
+
 <div class="overlay">
-<div class="panel">
 
-<h3>ADMIN LOGIN</h3>
+<div class="card">
 
-<input id="email" placeholder="email">
-<input id="pass" type="password" placeholder="password">
-<button onclick="login()">LOGIN</button>
+<!-- LOGIN SECTION -->
+<div id="loginBox">
+  <div class="header">ADMIN LOGIN</div>
 
-<hr>
+  <input id="email" placeholder="Email">
+  <input id="pass" type="password" placeholder="Password">
 
-<input type="file" id="file">
-<button onclick="uploadFile()">UPLOAD CSV / EXCEL</button>
+  <button onclick="login()">LOGIN</button>
+</div>
 
-<input id="adminEmail" placeholder="new admin email">
-<select id="roleSelect">
-  <option value="admin">Admin</option>
-  <option value="uploader">Uploader</option>
-</select>
-<button onclick="addAdmin()">ADD ADMIN</button>
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
 
-<hr>
+  <div class="header">ADMIN PANEL</div>
 
-<h3>DATABASE</h3>
-<div id="list"></div>
+  <input type="file" id="file">
+  <button onclick="uploadFile()">UPLOAD CSV / EXCEL</button>
+
+  <hr>
+
+  <input id="adminEmail" placeholder="New Admin Email">
+  <select id="roleSelect">
+    <option value="admin">Admin</option>
+    <option value="uploader">Uploader</option>
+  </select>
+  <button onclick="addAdmin()">ADD ADMIN</button>
+
+  <hr>
+
+  <div id="list"></div>
+
+  <button onclick="logout()" style="background:#333;margin-top:20px;">
+    LOGOUT
+  </button>
 
 </div>
+
+</div>
+
 </div>
 
 <script>
+
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -94,12 +148,13 @@ const auth = firebase.auth();
 
 let role = "";
 
+/* LOGIN */
 async function login(){
-  const e = email.value;
-  const p = pass.value;
-
   try{
-    await auth.signInWithEmailAndPassword(e,p);
+    const e = email.value;
+    const p = pass.value;
+
+    const res = await auth.signInWithEmailAndPassword(e,p);
 
     const snap = await db.collection("users")
       .where("email","==",e)
@@ -109,13 +164,23 @@ async function login(){
       role = d.data().role;
     });
 
-    alert("Logged in as: " + role);
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+
     loadData();
+
   }catch(err){
     alert(err.message);
   }
 }
 
+/* LOGOUT */
+function logout(){
+  auth.signOut();
+  location.reload();
+}
+
+/* UPLOAD */
 async function uploadFile(){
   const file = document.getElementById("file").files[0];
   const reader = new FileReader();
@@ -140,12 +205,10 @@ async function uploadFile(){
     }
 
     for(let d of data){
-      if(d.Building_Code || d.Building_Name){
-        await db.collection("buildings").add(d);
-      }
+      await db.collection("buildings").add(d);
     }
 
-    alert("Upload complete");
+    alert("Uploaded");
     loadData();
   };
 
@@ -156,6 +219,7 @@ async function uploadFile(){
   }
 }
 
+/* ADD ADMIN */
 async function addAdmin(){
   if(role !== "owner"){
     return alert("Only owner can add admins");
@@ -169,6 +233,7 @@ async function addAdmin(){
   alert("Admin added");
 }
 
+/* LOAD DATA */
 async function loadData(){
   const snap = await db.collection("buildings").get();
   const box = document.getElementById("list");
@@ -183,24 +248,27 @@ async function loadData(){
     div.innerHTML = `
       <b>${x.Building_Code || "-"}</b><br>
       ${x.Building_Name || "-"}<br>
-      <small>${x.Zone_or_Details || ""}</small><br>
-      <button class="red" onclick="deleteItem('${doc.id}')">DELETE</button>
+      <small>${x.Zone_or_Details || ""}</small>
+
+      <div class="row-btn">
+        <button class="red" onclick="deleteItem('${doc.id}')">DELETE</button>
+      </div>
     `;
 
     box.appendChild(div);
   });
 }
 
+/* DELETE */
 async function deleteItem(id){
   if(role !== "owner" && role !== "admin"){
     return alert("No permission");
   }
 
   await db.collection("buildings").doc(id).delete();
-
-  alert("Deleted");
   loadData();
 }
+
 </script>
 
 </body>
