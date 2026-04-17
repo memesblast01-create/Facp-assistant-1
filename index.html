@@ -184,8 +184,16 @@ function performSearch() {
 
     let detailsHtml = "";
     Object.entries(item).forEach(([key, value]) => {
-      // Skip code (already at top), internal fields, and empty values
-      if (key === codeKey || key.toLowerCase().includes('id') || key.toLowerCase().includes('created') || !value) return;
+      // STRICT FILTERING:
+      // 1. Skip the code (already at top)
+      // 2. Skip internal IDs or fields containing 'id'
+      // 3. Skip timestamps or fields containing 'created', 'updated', 'time', 'date'
+      // 4. Skip values that are purely long numbers (like 1776408383639)
+      const lowKey = key.toLowerCase();
+      const isInternal = lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || lowKey.includes('time') || lowKey.includes('date');
+      const isTimestamp = /^\d{10,15}$/.test(String(value)); // Matches 10-15 digit numbers
+      
+      if (key === codeKey || isInternal || isTimestamp || !value || String(value).trim() === "") return;
       
       const label = key.replace(/_/g, ' ');
       detailsHtml += `
