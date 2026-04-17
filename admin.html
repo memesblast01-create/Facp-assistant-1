@@ -2,273 +2,119 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADMIN PANEL</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:url("background.jpg") center/cover fixed;
-}
-
-.overlay{
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:rgba(0,0,0,0.65);
-  padding:20px;
-}
-
-/* MAIN CARD */
-.card{
-  width:100%;
-  max-width:650px;
-  background:#fff;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.3);
-}
-
-/* LOGIN */
-input,button,select{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:1px solid #ddd;
-  font-size:14px;
-}
-
-button{
-  background:#25D366;
-  color:white;
-  border:none;
-  cursor:pointer;
-  font-weight:bold;
-}
-
-.red{background:red !important}
-
-/* SECTIONS */
-.hidden{display:none}
-
-.header{
-  text-align:center;
-  font-weight:bold;
-  font-size:18px;
-  margin-bottom:10px;
-}
-
-/* DATA LIST */
-.item{
-  background:#f7f7f7;
-  padding:10px;
-  border-radius:10px;
-  margin-top:10px;
-}
-
-small{color:#666}
-
-.row-btn{
-  margin-top:8px;
-  display:flex;
-  gap:10px;
-}
-
-.row-btn button{
-  flex:1;
-}
+body { font-family: Arial; padding:20px; }
+section { margin:20px 0; padding:10px; border:1px solid #ccc; }
 </style>
 </head>
 
 <body>
 
-<div class="overlay">
+<h2>ADMIN LOGIN</h2>
 
-<div class="card">
-
-<!-- LOGIN SECTION -->
 <div id="loginBox">
-  <div class="header">ADMIN LOGIN</div>
-
-  <input id="email" placeholder="Email">
-  <input id="pass" type="password" placeholder="Password">
-
-  <button onclick="login()">LOGIN</button>
+<input id="email" placeholder="Email">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">LOGIN</button>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
+<div id="panel" style="display:none">
 
-  <div class="header">ADMIN PANEL</div>
+<h3>UPLOAD CSV / EXCEL</h3>
+<input type="file" id="fileInput">
+<button onclick="upload()">UPLOAD</button>
 
-  <input type="file" id="file">
-  <button onclick="uploadFile()">UPLOAD CSV / EXCEL</button>
-
-  <hr>
-
-  <input id="adminEmail" placeholder="New Admin Email">
-  <select id="roleSelect">
-    <option value="admin">Admin</option>
-    <option value="uploader">Uploader</option>
-  </select>
-  <button onclick="addAdmin()">ADD ADMIN</button>
-
-  <hr>
-
-  <div id="list"></div>
-
-  <button onclick="logout()" style="background:#333;margin-top:20px;">
-    LOGOUT
-  </button>
-
-</div>
-
-</div>
+<h3>ADD SUB ADMIN</h3>
+<input id="newAdmin" placeholder="Email">
+<button onclick="addAdmin()">MAKE ADMIN</button>
 
 </div>
 
 <script>
-
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain: "facp-assistant.firebaseapp.com",
+  projectId: "facp-assistant",
+  storageBucket: "facp-assistant.firebasestorage.app",
+  messagingSenderId: "771947694967",
+  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let role = "";
-
-/* LOGIN */
-async function login(){
-  try{
-    const e = email.value;
-    const p = pass.value;
-
-    const res = await auth.signInWithEmailAndPassword(e,p);
-
-    const snap = await db.collection("users")
-      .where("email","==",e)
-      .get();
-
-    snap.forEach(d=>{
-      role = d.data().role;
-    });
-
-    document.getElementById("loginBox").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
-
-    loadData();
-
-  }catch(err){
-    alert(err.message);
-  }
+function login(){
+  auth.signInWithEmailAndPassword(
+    email.value, pass.value
+  ).then(()=>{
+    loginBox.style.display="none";
+    panel.style.display="block";
+  }).catch(e=>alert(e.message));
 }
 
-/* LOGOUT */
-function logout(){
-  auth.signOut();
-  location.reload();
+function detect(row){
+  let values = Object.values(row);
+
+  return {
+    Building_Code: values.find(v=>/\d/.test(v)) || "",
+    Building_Name: values.find(v=>typeof v==="string" && !/\d/.test(v)) || "",
+    Zone_or_Details: values[2] || ""
+  };
 }
 
-/* UPLOAD */
-async function uploadFile(){
-  const file = document.getElementById("file").files[0];
-  const reader = new FileReader();
+function upload(){
+  let file = fileInput.files[0];
+  let reader = new FileReader();
 
   reader.onload = async function(e){
-
-    let data = [];
+    let data;
 
     if(file.name.endsWith(".xlsx")){
-      const wb = XLSX.read(e.target.result,{type:"binary"});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      data = XLSX.utils.sheet_to_json(sheet);
+      let wb = XLSX.read(e.target.result, {type:"binary"});
+      let sheet = wb.Sheets[wb.SheetNames[0]];
+      data = XLSX.utils.sheet_to_json(sheet, {header:1});
     } else {
-      data = e.target.result.split("\n").map(l=>{
-        const [c,n,z] = l.split(",");
-        return {
-          Building_Code:c?.trim(),
-          Building_Name:n?.trim(),
-          Zone_or_Details:z?.trim()
-        };
-      });
+      data = e.target.result.split("\n").map(r=>r.split(","));
     }
 
-    for(let d of data){
-      await db.collection("buildings").add(d);
-    }
+    let batch = db.batch();
 
+    data.forEach(r=>{
+      if(!r || r.length < 2) return;
+
+      let obj = detect(r);
+
+      let ref = db.collection("buildings").doc();
+      batch.set(ref, obj);
+    });
+
+    await batch.commit();
     alert("Uploaded");
-    loadData();
   };
 
-  if(file.name.endsWith(".xlsx")){
+  if(file.name.endsWith(".xlsx"))
     reader.readAsBinaryString(file);
-  } else {
+  else
     reader.readAsText(file);
-  }
 }
 
-/* ADD ADMIN */
-async function addAdmin(){
-  if(role !== "owner"){
-    return alert("Only owner can add admins");
-  }
-
-  await db.collection("users").add({
-    email: adminEmail.value,
-    role: roleSelect.value
+function addAdmin(){
+  db.collection("admins").add({
+    email: newAdmin.value,
+    role: "subadmin"
   });
-
   alert("Admin added");
 }
-
-/* LOAD DATA */
-async function loadData(){
-  const snap = await db.collection("buildings").get();
-  const box = document.getElementById("list");
-  box.innerHTML = "";
-
-  snap.forEach(doc=>{
-    const x = doc.data();
-
-    const div = document.createElement("div");
-    div.className = "item";
-
-    div.innerHTML = `
-      <b>${x.Building_Code || "-"}</b><br>
-      ${x.Building_Name || "-"}<br>
-      <small>${x.Zone_or_Details || ""}</small>
-
-      <div class="row-btn">
-        <button class="red" onclick="deleteItem('${doc.id}')">DELETE</button>
-      </div>
-    `;
-
-    box.appendChild(div);
-  });
-}
-
-/* DELETE */
-async function deleteItem(id){
-  if(role !== "owner" && role !== "admin"){
-    return alert("No permission");
-  }
-
-  await db.collection("buildings").doc(id).delete();
-  loadData();
-}
-
 </script>
 
 </body>
