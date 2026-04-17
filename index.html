@@ -1,244 +1,69 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP ASSISTANT</title><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><style>
-body{
-    margin:0;
-    font-family:Arial;
-    background:url('background.jpg') no-repeat center center/cover;
-    color:white;
-}
-
-.container{
-    text-align:center;
-    padding:30px;
-    background:rgba(0,0,0,0.6);
-    min-height:100vh;
-}
-
-input{
-    padding:12px;
-    width:80%;
-    border-radius:8px;
-    border:none;
-    margin:10px;
-}
-
-button{
-    padding:12px 20px;
-    border:none;
-    border-radius:8px;
-    background:#25D366;
-    color:white;
-    cursor:pointer;
-    margin:5px;
-}
-
-#results{
-    margin-top:20px;
-}
-
-.card{
-    background:white;
-    color:black;
-    padding:15px;
-    margin:10px auto;
-    width:90%;
-    border-radius:10px;
-}
-
-#adminPanel{
-    display:none;
-    background:#111;
-    padding:20px;
-    margin-top:20px;
-    border-radius:10px;
-}
-</style></head><body><div class="container">
-    <h2>FACP ASSISTANT</h2><input id="searchInput" placeholder="Search code or building name">
+<title>FACP ASSISTANT</title><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><style>
+body{font-family:Arial;background:#111;color:white;text-align:center}
+input{padding:10px;width:80%}
+button{padding:10px;margin:10px;background:#25D366;color:white;border:none}
+.card{background:white;color:black;margin:10px;padding:10px;border-radius:8px}
+</style></head><body><h2>FACP ASSISTANT</h2><input id="q" placeholder="Search code or name">
 <br>
-<button onclick="searchData()">Search</button>
-
-<br><br>
-<button onclick="toggleAdmin()">Admin Panel</button>
-
-<div id="adminPanel">
-
-    <div id="loginForm">
-        <input id="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-    </div>
-
-    <div id="adminControls" style="display:none;">
-        <h3>Upload File (CSV / Excel)</h3>
-
-        <input type="file" id="fileInput" accept=".csv, .xlsx">
-        <br>
-        <button onclick="handleFile()">Upload File</button>
-
-        <br><br>
-        <button onclick="logout()" style="background:red;">Logout</button>
-    </div>
-
-</div>
-
-<div id="results"></div>
-
-</div><script>
+<button onclick="search()">Search</button><br>
+<button onclick="location.href='admin.html'">Admin Panel</button><div id="results"></div><script>
 const firebaseConfig = {
   apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
   authDomain: "facp-assistant.firebaseapp.com",
-  projectId: "facp-assistant",
-  storageBucket: "facp-assistant.firebasestorage.app",
-  messagingSenderId: "771947694967",
-  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
+  projectId: "facp-assistant"
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const db = firebase.firestore();
-const auth = firebase.auth();
 
-let allData = [];
+let data = [];
 
-async function loadData(){
-    allData = [];
-
+async function load(){
+    data = [];
     const snap = await db.collection("buildings").get();
 
     snap.forEach(doc=>{
         const d = doc.data();
-        allData.push({
+
+        data.push({
+            id: doc.id,
             code: d.code || d.Building_Code || "",
             name: d.name || d.Building_Name || "",
             zone: d.zone || d.Zone_or_Details || ""
         });
     });
 
-    console.log("Loaded:", allData.length);
+    console.log("Loaded:", data.length);
 }
+load();
 
-window.onload = loadData;
+function search(){
+    const q = document.getElementById("q").value.toLowerCase();
 
-function searchData(){
-    const q = document.getElementById("searchInput").value.toLowerCase();
-
-    const results = allData.filter(i =>
+    const res = data.filter(i =>
         i.code.toLowerCase().includes(q) ||
         i.name.toLowerCase().includes(q)
     );
 
     const div = document.getElementById("results");
-    div.innerHTML = "";
+    div.innerHTML="";
 
-    if(results.length===0){
-        div.innerHTML = "No results found";
+    if(!res.length){
+        div.innerHTML="No results";
         return;
     }
 
-    results.forEach(r=>{
-        div.innerHTML += `
+    res.forEach(r=>{
+        div.innerHTML+=`
         <div class="card">
-            <b>${r.name}</b><br>
-            Code: ${r.code}<br>
-            Zone: ${r.zone}
+        <b>${r.name}</b><br>
+        Code: ${r.code}<br>
+        Zone: ${r.zone}
         </div>`;
     });
-}
-
-function toggleAdmin(){
-    const p = document.getElementById("adminPanel");
-    p.style.display = p.style.display==="block" ? "none":"block";
-}
-
-async function login(){
-    const e = document.getElementById("email").value;
-    const p = document.getElementById("password").value;
-
-    try{
-        await auth.signInWithEmailAndPassword(e,p);
-        document.getElementById("loginForm").style.display="none";
-        document.getElementById("adminControls").style.display="block";
-    }catch(err){
-        alert(err.message);
-    }
-}
-
-async function logout(){
-    await auth.signOut();
-    location.reload();
-}
-
-function handleFile(){
-    const file = document.getElementById("fileInput").files[0];
-
-    if(!file){
-        alert("Select file first");
-        return;
-    }
-
-    if(file.name.endsWith(".csv")){
-        handleCSV(file);
-    } else {
-        handleExcel(file);
-    }
-}
-
-function handleCSV(file){
-    const reader = new FileReader();
-
-    reader.onload = function(e){
-        const lines = e.target.result.split("\n");
-
-        const rows = lines.map(l=>{
-            const [code,name,zone] = l.split(",");
-            return {code,name,zone};
-        });
-
-        uploadData(rows);
-    };
-
-    reader.readAsText(file);
-}
-
-function handleExcel(file){
-    const reader = new FileReader();
-
-    reader.onload = function(e){
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data,{type:'array'});
-
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet);
-
-        uploadData(rows);
-    };
-
-    reader.readAsArrayBuffer(file);
-}
-
-async function uploadData(rows){
-    const batch = db.batch();
-
-    rows.forEach(r=>{
-        if(!r.name && !r.Building_Name) return;
-
-        const ref = db.collection("buildings").doc();
-
-        batch.set(ref,{
-            code: r.code || r.Building_Code || "",
-            name: r.name || r.Building_Name || "",
-            zone: r.zone || r.Zone_or_Details || ""
-        });
-    });
-
-    await batch.commit();
-
-    alert("Uploaded successfully");
-
-    await loadData();
 }
 </script></body>
 </html>
