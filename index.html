@@ -13,7 +13,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("background.jpg");
+  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url("background.jpg");
   background-size: cover;
   background-attachment: fixed;
   background-position: center;
@@ -28,7 +28,7 @@ body {
   width: 100%;
   max-width: 700px;
   backdrop-filter: blur(15px);
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   padding: 40px;
   border-radius: 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -49,42 +49,51 @@ body {
   padding: 15px;
   border: none;
   border-radius: 10px;
-  font-size: 1em;
+  font-size: 1.1em;
   background: white;
   color: #333;
 }
 .search-container button {
   padding: 15px 30px;
   background: #25D366;
-  color: white;
+  color: black;
   border: none;
   border-radius: 10px;
   font-weight: bold;
   cursor: pointer;
+  font-size: 1em;
 }
 .admin-btn {
   display: block;
   margin: 20px auto 0;
   padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   color: #aaa;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   cursor: pointer;
+  font-size: 0.9em;
 }
-.results-container { margin-top: 30px; max-height: 500px; overflow-y: auto; }
+.results-container { margin-top: 30px; max-height: 500px; overflow-y: auto; padding-right: 5px; }
 .result-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(37, 211, 102, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 5px solid #25D366;
   padding: 20px;
   margin-bottom: 15px;
-  border-radius: 12px;
-  transition: transform 0.2s;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
-.result-card:hover { transform: scale(1.02); background: rgba(255, 255, 255, 0.08); }
-.field-row { margin-bottom: 5px; display: flex; flex-wrap: wrap; }
-.field-label { color: #25D366; font-weight: bold; margin-right: 10px; min-width: 120px; }
-.field-value { color: #fff; flex: 1; }
+.code-line {
+  font-size: 1.3em;
+  font-weight: 900;
+  color: #25D366;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 5px;
+}
+.detail-row { margin-bottom: 6px; font-size: 1.05em; }
+.detail-label { color: #aaa; font-weight: 500; margin-right: 8px; }
+.detail-value { color: #fff; font-weight: 700; }
 .no-results { text-align: center; color: #aaa; padding: 20px; }
 .status-badge {
   font-size: 0.7em;
@@ -95,19 +104,21 @@ body {
   font-weight: bold;
 }
 .status-online { background: #25D366; color: black; }
-.status-offline { background: #ff9800; color: white; }
+/* Scrollbar */
+.results-container::-webkit-scrollbar { width: 6px; }
+.results-container::-webkit-scrollbar-thumb { background: #25D366; border-radius: 10px; }
 </style>
 </head>
 <body>
 
 <div class="main-container">
   <div class="header">
-    <h1>🏢 FACP Assistant <span id="statusBadge" class="status-badge status-offline">Local Mode</span></h1>
+    <h1>🏢 FACP Assistant <span id="statusBadge" class="status-badge status-online">Ready</span></h1>
     <p>Building Search System</p>
   </div>
 
   <div class="search-container">
-    <input id="searchInput" type="text" placeholder="Search by code, name, or any detail...">
+    <input id="searchInput" type="text" placeholder="Search code, name, or area...">
     <button onclick="performSearch()">SEARCH</button>
   </div>
 
@@ -130,42 +141,23 @@ const firebaseConfig = {
 
 let buildingsData = [];
 
-// Initialize
 window.onload = async () => {
-  // 1. Load from Local Storage first (Immediate)
-  const localData = JSON.parse(localStorage.getItem("facp_data") || "[]");
-  buildingsData = localData;
-  updateStatus();
-
-  // 2. Try to load from Firebase (Sync)
+  // Load local first
+  buildingsData = JSON.parse(localStorage.getItem("facp_data") || "[]");
+  
+  // Sync with Firebase
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const snap = await db.collection("buildings").get();
     const fireData = [];
     snap.forEach(doc => fireData.push(doc.data()));
-    
     if (fireData.length > 0) {
-      // Merge and deduplicate if necessary, or just use Firebase as source of truth
       buildingsData = fireData;
-      document.getElementById("statusBadge").textContent = "Cloud Synced";
-      document.getElementById("statusBadge").className = "status-badge status-online";
+      localStorage.setItem("facp_data", JSON.stringify(fireData));
     }
-  } catch (e) {
-    console.log("Firebase sync failed, using local data.");
-  }
-
-  if (buildingsData.length === 0) {
-    document.getElementById("resultsContainer").innerHTML = '<div class="no-results">No data found. Go to Admin to upload.</div>';
-  }
+  } catch (e) { console.log("Offline mode"); }
 };
-
-function updateStatus() {
-  const badge = document.getElementById("statusBadge");
-  if (buildingsData.length > 0) {
-    badge.textContent = "Data Ready (" + buildingsData.length + ")";
-  }
-}
 
 function performSearch() {
   const q = document.getElementById("searchInput").value.toLowerCase().trim();
@@ -186,21 +178,30 @@ function performSearch() {
   }
 
   container.innerHTML = results.map(item => {
-    // Dynamically build rows for all available fields to avoid N/A
-    let fieldsHtml = "";
+    // Identify Code field (usually first or contains 'Code')
+    let codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code')) || Object.keys(item)[0];
+    let codeValue = item[codeKey] || "N/A";
+
+    let detailsHtml = "";
     Object.entries(item).forEach(([key, value]) => {
-      if (value && String(value).trim() !== "") {
-        // Clean up key names (e.g., Building_Code -> Building Code)
-        const label = key.replace(/_/g, ' ');
-        fieldsHtml += `
-          <div class="field-row">
-            <span class="field-label">${label}:</span>
-            <span class="field-value">${value}</span>
-          </div>
-        `;
-      }
+      // Skip code (already at top), internal fields, and empty values
+      if (key === codeKey || key.toLowerCase().includes('id') || key.toLowerCase().includes('created') || !value) return;
+      
+      const label = key.replace(/_/g, ' ');
+      detailsHtml += `
+        <div class="detail-row">
+          <span class="detail-label">${label}:</span>
+          <span class="detail-value">${value}</span>
+        </div>
+      `;
     });
-    return `<div class="result-card">${fieldsHtml}</div>`;
+
+    return `
+      <div class="result-card">
+        <div class="code-line">${codeValue}</div>
+        ${detailsHtml}
+      </div>
+    `;
   }).join("");
 }
 
