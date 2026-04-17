@@ -1,0 +1,134 @@
+<!DOCTYPE html><html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><style>
+body{font-family:Arial;background:#111;color:white;text-align:center}
+input{padding:10px;margin:5px}
+button{padding:10px;margin:5px}
+.card{background:white;color:black;margin:10px;padding:10px}
+</style></head><body><h2>ADMIN PANEL</h2><div id="login">
+<input id="email" placeholder="Email">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div><div id="panel" style="display:none;"><h3>Upload File</h3>
+<input type="file" id="file">
+<button onclick="upload()">Upload</button><h3>Add Admin (Owner Only)</h3>
+<input id="newAdmin" placeholder="Admin Email">
+<button onclick="addAdmin()">Add Admin</button><h3>All Data</h3>
+<div id="list"></div><button onclick="logout()">Logout</button>
+
+</div><script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain: "facp-assistant.firebaseapp.com",
+  projectId: "facp-assistant"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+let role = "admin"; // default
+
+async function login(){
+    const e = email.value;
+    const p = pass.value;
+
+    const res = await auth.signInWithEmailAndPassword(e,p);
+
+    const uid = res.user.uid;
+
+    const doc = await db.collection("admins").doc(uid).get();
+
+    if(doc.exists){
+        role = doc.data().role;
+    }
+
+    login.style.display="none";
+    panel.style.display="block";
+
+    loadData();
+}
+
+async function loadData(){
+    const snap = await db.collection("buildings").get();
+
+    list.innerHTML="";
+
+    snap.forEach(doc=>{
+        const d = doc.data();
+
+        list.innerHTML+=`
+        <div class="card">
+        ${d.name} (${d.code})
+        ${role==="owner" ? `<button onclick="del('${doc.id}')">Delete</button>` : ""}
+        </div>`;
+    });
+}
+
+async function del(id){
+    await db.collection("buildings").doc(id).delete();
+    loadData();
+}
+
+async function upload(){
+    const f = file.files[0];
+
+    if(!f){alert("Select file");return;}
+
+    if(f.name.endsWith(".csv")){
+        const text = await f.text();
+        const rows = text.split("\n").map(l=>{
+            const [code,name,zone]=l.split(",");
+            return {code,name,zone};
+        });
+        save(rows);
+    } else {
+        const data = await f.arrayBuffer();
+        const wb = XLSX.read(data);
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        save(rows);
+    }
+}
+
+async function save(rows){
+    const batch = db.batch();
+
+    rows.forEach(r=>{
+        if(!r.name && !r.Building_Name) return;
+
+        const ref = db.collection("buildings").doc();
+
+        batch.set(ref,{
+            code: r.code || r.Building_Code || "",
+            name: r.name || r.Building_Name || "",
+            zone: r.zone || r.Zone_or_Details || ""
+        });
+    });
+
+    await batch.commit();
+    alert("Uploaded");
+    loadData();
+}
+
+async function addAdmin(){
+    if(role!=="owner"){alert("Not allowed");return;}
+
+    const emailVal = newAdmin.value;
+
+    const user = await auth.createUserWithEmailAndPassword(emailVal,"123456");
+
+    await db.collection("admins").doc(user.user.uid).set({
+        role:"admin"
+    });
+
+    alert("Admin created");
+}
+
+async function logout(){
+    await auth.signOut();
+    location.reload();
+}
+</script></body>
+</html>
