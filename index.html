@@ -1,19 +1,87 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
-<meta charset="UTF-8">
-<title>FACP ASSISTANT</title><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><style>
-body{font-family:Arial;background:#111;color:white;text-align:center}
-input{padding:10px;width:80%}
-button{padding:10px;margin:10px;background:#25D366;color:white;border:none}
-.card{background:white;color:black;margin:10px;padding:10px;border-radius:8px}
-</style></head><body><h2>FACP ASSISTANT</h2><input id="q" placeholder="Search code or name">
-<br>
-<button onclick="search()">Search</button><br>
-<button onclick="location.href='admin.html'">Admin Panel</button><div id="results"></div><script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FACP ASSISTANT</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<style>
+body {
+    margin:0;
+    font-family:sans-serif;
+    background:url('background.jpg') center/cover fixed;
+    color:white;
+}
+.overlay {
+    background:rgba(0,0,0,0.7);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+}
+.box {
+    background:rgba(255,255,255,0.1);
+    padding:20px;
+    border-radius:15px;
+    width:100%;
+    max-width:400px;
+}
+input,button {
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:10px;
+}
+button {
+    background:#25D366;
+    color:white;
+    font-weight:bold;
+}
+.card {
+    background:white;
+    color:black;
+    padding:10px;
+    margin-top:10px;
+    border-radius:10px;
+}
+.admin-link {
+    margin-top:10px;
+    font-size:12px;
+    color:#aaa;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="overlay">
+
+<div class="box">
+<h2>FACP ASSISTANT</h2>
+
+<input id="search" placeholder="Search code or name">
+<button onclick="searchData()">Search</button>
+
+<div class="admin-link" onclick="goAdmin()">Admin Panel</div>
+</div>
+
+<div id="results" style="width:100%;max-width:400px;"></div>
+
+</div>
+
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
   authDomain: "facp-assistant.firebaseapp.com",
-  projectId: "facp-assistant"
+  projectId: "facp-assistant",
+  storageBucket: "facp-assistant.firebasestorage.app",
+  messagingSenderId: "771947694967",
+  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -21,49 +89,40 @@ const db = firebase.firestore();
 
 let data = [];
 
-async function load(){
-    data = [];
+async function loadData() {
     const snap = await db.collection("buildings").get();
-
-    snap.forEach(doc=>{
-        const d = doc.data();
-
-        data.push({
-            id: doc.id,
-            code: d.code || d.Building_Code || "",
-            name: d.name || d.Building_Name || "",
-            zone: d.zone || d.Zone_or_Details || ""
-        });
-    });
-
-    console.log("Loaded:", data.length);
+    data = snap.docs.map(d => d.data());
 }
-load();
+loadData();
 
-function search(){
-    const q = document.getElementById("q").value.toLowerCase();
-
-    const res = data.filter(i =>
-        i.code.toLowerCase().includes(q) ||
-        i.name.toLowerCase().includes(q)
+function searchData() {
+    const q = document.getElementById("search").value.toLowerCase();
+    const results = data.filter(d =>
+        (d.Building_Code||"").toLowerCase().includes(q) ||
+        (d.Building_Name||"").toLowerCase().includes(q)
     );
 
-    const div = document.getElementById("results");
-    div.innerHTML="";
+    const area = document.getElementById("results");
+    area.innerHTML = "";
 
-    if(!res.length){
-        div.innerHTML="No results";
+    if(results.length === 0){
+        area.innerHTML = "<p>No result</p>";
         return;
     }
 
-    res.forEach(r=>{
-        div.innerHTML+=`
+    results.forEach(r=>{
+        area.innerHTML += `
         <div class="card">
-        <b>${r.name}</b><br>
-        Code: ${r.code}<br>
-        Zone: ${r.zone}
+        <b>${r.Building_Name}</b><br>
+        Code: ${r.Building_Code}<br>
+        Zone: ${r.Zone_or_Details || "-"}
         </div>`;
     });
 }
-</script></body>
+
+function goAdmin(){
+    window.location.href = "admin.html";
+}
+</script>
+</body>
 </html>
