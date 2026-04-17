@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Admin Panel</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -18,24 +17,42 @@ background:url('background.jpg') center/cover fixed;
 color:white;
 }
 .overlay{
-background:rgba(0,0,0,0.8);
+background:rgba(0,0,0,0.85);
 min-height:100vh;
 padding:20px;
 }
+.card{
+background:rgba(255,255,255,0.1);
+padding:15px;
+border-radius:12px;
+margin-bottom:10px;
+}
 input,button{
 width:100%;
-padding:10px;
+padding:12px;
 margin-top:10px;
 border:none;
 border-radius:8px;
+font-size:14px;
 }
-button{background:#25D366;color:white;}
-.row{
-background:white;
-color:black;
+button{
+background:#25D366;
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+button:active{
+transform:scale(0.98);
+}
+.small{
+font-size:12px;
+opacity:0.7;
 margin-top:5px;
-padding:10px;
-border-radius:8px;
+}
+#errorBox{
+color:red;
+margin-top:10px;
+font-size:13px;
 }
 </style>
 </head>
@@ -45,21 +62,33 @@ border-radius:8px;
 
 <h2>ADMIN PANEL</h2>
 
-<div id="loginBox">
+<div id="loginBox" class="card">
+<h3>Login</h3>
 <input id="email" placeholder="Email">
 <input id="pass" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
+<div id="errorBox"></div>
 </div>
 
 <div id="panel" style="display:none;">
 
+<div class="card">
+<h3>Upload File</h3>
 <input type="file" id="file">
-<button onclick="upload()">Upload CSV/Excel</button>
+<button onclick="uploadFile()">UPLOAD</button>
+<div class="small">Supports Excel (.xlsx) and CSV</div>
+</div>
 
-<input id="newAdmin" placeholder="Add admin email">
+<div class="card">
+<h3>Add Admin</h3>
+<input id="newAdmin" placeholder="Admin Email">
 <button onclick="addAdmin()">Add Admin</button>
+</div>
 
+<div class="card">
+<h3>Data</h3>
 <div id="list"></div>
+</div>
 
 </div>
 
@@ -79,60 +108,104 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let role = "uploader";
-
-async function login(){
- await auth.signInWithEmailAndPassword(email.value, pass.value);
- document.getElementById("loginBox").style.display="none";
- document.getElementById("panel").style.display="block";
- load();
+function showError(msg){
+ document.getElementById("errorBox").innerText = msg;
 }
 
-async function upload(){
+async function login(){
+ try {
+  const user = await auth.signInWithEmailAndPassword(email.value, pass.value);
+
+  document.getElementById("loginBox").style.display="none";
+  document.getElementById("panel").style.display="block";
+
+  loadData();
+ }
+ catch(err){
+  showError(err.message);
+ }
+}
+
+function uploadFile(){
+
  const file = document.getElementById("file").files[0];
 
+ if(!file){
+ alert("Select a file first");
+ return;
+ }
+
  const reader = new FileReader();
+
+ reader.onerror = () => {
+ alert("File reading failed");
+ };
+
  reader.onload = async (e)=>{
+
+ try {
+
  const data = new Uint8Array(e.target.result);
  const wb = XLSX.read(data,{type:"array"});
  const sheet = wb.Sheets[wb.SheetNames[0]];
  const json = XLSX.utils.sheet_to_json(sheet,{header:1});
 
- for(let row of json){
- if(!row.length) continue;
+ const batch = db.batch();
 
- await db.collection("buildings").add({
- raw: row.join(" ")
+ json.forEach(row=>{
+ if(!row || row.length===0) return;
+
+ const ref = db.collection("buildings").doc();
+
+ batch.set(ref,{
+ raw: row.join(" "),
+ createdAt: Date.now()
  });
+ });
+
+ await batch.commit();
+
+ alert("Upload successful");
+ loadData();
+
+ }
+ catch(err){
+ alert("Upload failed: " + err.message);
  }
 
- alert("Uploaded");
- load();
  };
 
  reader.readAsArrayBuffer(file);
 }
 
-async function load(){
+async function addAdmin(){
+
+ try {
+ await db.collection("admins").doc(newAdmin.value).set({
+ email: newAdmin.value,
+ role: "uploader"
+ });
+
+ alert("Admin added");
+ }
+ catch(err){
+ alert(err.message);
+ }
+}
+
+async function loadData(){
+
  const snap = await db.collection("buildings").get();
  const list = document.getElementById("list");
  list.innerHTML="";
 
  snap.forEach(d=>{
  list.innerHTML += `
- <div class="row">
+ <div class="card">
  ${d.data().raw}
  </div>`;
  });
-}
 
-async function addAdmin(){
- await db.collection("admins").doc(newAdmin.value).set({
- email: newAdmin.value,
- role: "uploader"
- });
-
- alert("Admin added (uploader only)");
 }
 </script>
 
