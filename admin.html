@@ -3,38 +3,39 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>Admin Panel</title>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family:sans-serif;
-    background:url('background.jpg') center/cover fixed;
-    color:white;
+body{
+margin:0;
+font-family:sans-serif;
+background:url('background.jpg') center/cover fixed;
+color:white;
 }
-.overlay {
-    background:rgba(0,0,0,0.8);
-    min-height:100vh;
-    padding:20px;
+.overlay{
+background:rgba(0,0,0,0.8);
+min-height:100vh;
+padding:20px;
 }
-input,button {
-    width:100%;
-    padding:10px;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
+input,button{
+width:100%;
+padding:10px;
+margin-top:10px;
+border:none;
+border-radius:8px;
 }
-button { background:#25D366; color:white; }
-.table { margin-top:20px; }
-.row {
-    background:white;
-    color:black;
-    padding:10px;
-    margin-top:5px;
-    border-radius:8px;
+button{background:#25D366;color:white;}
+.row{
+background:white;
+color:black;
+margin-top:5px;
+padding:10px;
+border-radius:8px;
 }
 </style>
 </head>
@@ -42,9 +43,9 @@ button { background:#25D366; color:white; }
 <body>
 <div class="overlay">
 
-<h2>Admin Panel</h2>
+<h2>ADMIN PANEL</h2>
 
-<div id="login">
+<div id="loginBox">
 <input id="email" placeholder="Email">
 <input id="pass" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
@@ -53,9 +54,11 @@ button { background:#25D366; color:white; }
 <div id="panel" style="display:none;">
 
 <input type="file" id="file">
-<button onclick="uploadFile()">Upload File</button>
+<button onclick="upload()">Upload CSV/Excel</button>
 
-<h3>Data</h3>
+<input id="newAdmin" placeholder="Add admin email">
+<button onclick="addAdmin()">Add Admin</button>
+
 <div id="list"></div>
 
 </div>
@@ -76,59 +79,62 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+let role = "uploader";
+
 async function login(){
-    await auth.signInWithEmailAndPassword(
-        email.value, pass.value
-    );
-    document.getElementById("login").style.display="none";
-    document.getElementById("panel").style.display="block";
-    loadData();
+ await auth.signInWithEmailAndPassword(email.value, pass.value);
+ document.getElementById("loginBox").style.display="none";
+ document.getElementById("panel").style.display="block";
+ load();
 }
 
-async function uploadFile(){
-    const file = document.getElementById("file").files[0];
-    const reader = new FileReader();
+async function upload(){
+ const file = document.getElementById("file").files[0];
 
-    reader.onload = async (e)=>{
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data,{type:"array"});
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
+ const reader = new FileReader();
+ reader.onload = async (e)=>{
+ const data = new Uint8Array(e.target.result);
+ const wb = XLSX.read(data,{type:"array"});
+ const sheet = wb.Sheets[wb.SheetNames[0]];
+ const json = XLSX.utils.sheet_to_json(sheet,{header:1});
 
-        for(const row of json){
-            await db.collection("buildings").add({
-                Building_Code: row.Building_Code || row.Code || "",
-                Building_Name: row.Building_Name || row.Name || "",
-                Zone_or_Details: row.Zone || ""
-            });
-        }
+ for(let row of json){
+ if(!row.length) continue;
 
-        alert("Uploaded");
-        loadData();
-    };
+ await db.collection("buildings").add({
+ raw: row.join(" ")
+ });
+ }
 
-    reader.readAsArrayBuffer(file);
+ alert("Uploaded");
+ load();
+ };
+
+ reader.readAsArrayBuffer(file);
 }
 
-async function loadData(){
-    const snap = await db.collection("buildings").get();
-    const list = document.getElementById("list");
-    list.innerHTML = "";
+async function load(){
+ const snap = await db.collection("buildings").get();
+ const list = document.getElementById("list");
+ list.innerHTML="";
 
-    snap.forEach(doc=>{
-        const d = doc.data();
-        list.innerHTML += `
-        <div class="row">
-        ${d.Building_Name} (${d.Building_Code})
-        <button onclick="del('${doc.id}')">Delete</button>
-        </div>`;
-    });
+ snap.forEach(d=>{
+ list.innerHTML += `
+ <div class="row">
+ ${d.data().raw}
+ </div>`;
+ });
 }
 
-async function del(id){
-    await db.collection("buildings").doc(id).delete();
-    loadData();
+async function addAdmin(){
+ await db.collection("admins").doc(newAdmin.value).set({
+ email: newAdmin.value,
+ role: "uploader"
+ });
+
+ alert("Admin added (uploader only)");
 }
 </script>
+
 </body>
 </html>
