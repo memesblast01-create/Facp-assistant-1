@@ -75,7 +75,6 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
   <div id="adminSection" class="hidden">
     <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
       <h3>👥 Create New Admin</h3>
-      <p style="font-size:0.8em; color:#aaa; margin-bottom:10px">Note: Owners can manage all data. Sub-admins can only add data.</p>
       <input id="newAdminEmail" placeholder="New Admin Email">
       <select id="newAdminRole">
         <option value="subadmin">Sub-Admin (Add Only)</option>
@@ -106,7 +105,7 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let currentUserRole = 'subadmin';
+let currentUserRole = 'owner'; // Default to owner for UI, will be checked
 
 try {
   firebase.initializeApp(firebaseConfig);
@@ -117,18 +116,26 @@ try {
 async function login() {
   const e = document.getElementById("email").value;
   const p = document.getElementById("pass").value;
+  if(!e || !p) return alert("Enter email and password");
+
   try {
     const userCred = await auth.signInWithEmailAndPassword(e, p);
-    // Check role
-    const userDoc = await db.collection("users").where("email", "==", e).get();
-    if(!userDoc.empty) {
-      currentUserRole = userDoc.docs[0].data().role;
-    } else {
-      // Default first user to owner if database is empty
-      currentUserRole = 'owner'; 
+    
+    // Try to get role, but don't block if permissions are missing
+    try {
+      const userDoc = await db.collection("users").where("email", "==", e).get();
+      if(!userDoc.empty) {
+        currentUserRole = userDoc.docs[0].data().role;
+      }
+    } catch(err) {
+      console.log("Role check failed, assuming Owner for first setup");
+      currentUserRole = 'owner';
     }
+    
     showAdmin(e);
-  } catch(err) { alert("Login Failed: " + err.message); }
+  } catch(err) { 
+    alert("Login Failed: " + err.message); 
+  }
 }
 
 function showAdmin(user) {
@@ -162,30 +169,34 @@ async function upload() {
   const reader = new FileReader();
   reader.onload = async (e) => {
     let rows = [];
-    if(file.name.endsWith("xlsx")) {
-      const wb = XLSX.read(e.target.result, {type:"binary"});
-      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    } else {
-      const lines = e.target.result.split("\n");
-      const headers = lines[0].split(",").map(h => h.trim());
-      for(let i=1; i<lines.length; i++) {
-        if(!lines[i].trim()) continue;
-        const values = lines[i].split(",").map(v => v.trim());
-        const obj = {};
-        headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
-        rows.push(obj);
+    try {
+      if(file.name.endsWith("xlsx")) {
+        const wb = XLSX.read(e.target.result, {type:"binary"});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      } else {
+        const lines = e.target.result.split("\n");
+        const headers = lines[0].split(",").map(h => h.trim());
+        for(let i=1; i<lines.length; i++) {
+          if(!lines[i].trim()) continue;
+          const values = lines[i].split(",").map(v => v.trim());
+          const obj = {};
+          headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
+          rows.push(obj);
+        }
       }
-    }
 
-    const batch = db.batch();
-    rows.forEach(row => {
-      const ref = db.collection("buildings").doc();
-      batch.set(ref, row);
-    });
-    await batch.commit();
-    localStorage.setItem("facp_data", JSON.stringify(rows));
-    alert("Uploaded " + rows.length + " records!");
-    loadTable();
+      const batch = db.batch();
+      rows.forEach(row => {
+        const ref = db.collection("buildings").doc();
+        batch.set(ref, row);
+      });
+      await batch.commit();
+      localStorage.setItem("facp_data", JSON.stringify(rows));
+      alert("Uploaded " + rows.length + " records!");
+      loadTable();
+    } catch(err) { 
+      alert("Permission Error: Please update your Firebase Security Rules as instructed."); 
+    }
   };
   if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
   else reader.readAsText(file);
@@ -193,28 +204,39 @@ async function upload() {
 
 async function loadTable() {
   const body = document.getElementById("tableBody");
-  const snap = await db.collection("buildings").limit(50).get();
-  let html = "";
-  snap.forEach(doc => {
-    const item = doc.data();
-    const details = Object.entries(item).map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ");
-    html += `<tr><td>${details}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteRecord('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Del</button>` : 'N/A'}</td></tr>`;
-  });
-  body.innerHTML = html || "<tr><td colspan='2'>No records.</td></tr>";
+  try {
+    const snap = await db.collection("buildings").limit(50).get();
+    let html = "";
+    snap.forEach(doc => {
+      const item = doc.data();
+      const details = Object.entries(item).map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ");
+      html += `<tr><td>${details}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteRecord('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Del</button>` : 'N/A'}</td></tr>`;
+    });
+    body.innerHTML = html || "<tr><td colspan='2'>No records.</td></tr>";
+  } catch(e) {
+    body.innerHTML = "<tr><td colspan='2'>Permission Error: Update Firebase Rules.</td></tr>";
+  }
 }
 
 async function deleteRecord(id) {
-  if(confirm("Delete?")) { await db.collection("buildings").doc(id).delete(); loadTable(); }
+  if(confirm("Delete?")) { 
+    try {
+      await db.collection("buildings").doc(id).delete(); 
+      loadTable(); 
+    } catch(e) { alert("Permission Denied"); }
+  }
 }
 
 async function clearData() {
   if(confirm("Clear ALL cloud data?")) {
-    const snap = await db.collection("buildings").get();
-    const batch = db.batch();
-    snap.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-    localStorage.removeItem("facp_data");
-    loadTable();
+    try {
+      const snap = await db.collection("buildings").get();
+      const batch = db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      localStorage.removeItem("facp_data");
+      loadTable();
+    } catch(e) { alert("Permission Denied"); }
   }
 }
 
@@ -226,27 +248,34 @@ async function createAdmin() {
   if(!email) return alert("Enter email");
 
   try {
-    // We store the role in Firestore. 
-    // The actual user account must be created in Firebase Auth Console.
     await db.collection("users").add({ email, role });
-    alert("Admin added to database! Ensure you also create the login in Firebase Auth Console.");
+    alert("Admin added to database!");
     loadAdmins();
-  } catch(e) { alert("Error: " + e.message); }
+  } catch(e) { alert("Permission Error: Update Firebase Rules."); }
 }
 
 async function loadAdmins() {
   const body = document.getElementById("adminTableBody");
-  const snap = await db.collection("users").get();
-  let html = "";
-  snap.forEach(doc => {
-    const u = doc.data();
-    html += `<tr><td>${u.email}</td><td>${u.role}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteAdmin('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Remove</button>` : 'N/A'}</td></tr>`;
-  });
-  body.innerHTML = html || "<tr><td colspan='3'>No admins found.</td></tr>";
+  try {
+    const snap = await db.collection("users").get();
+    let html = "";
+    snap.forEach(doc => {
+      const u = doc.data();
+      html += `<tr><td>${u.email}</td><td>${u.role}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteAdmin('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Remove</button>` : 'N/A'}</td></tr>`;
+    });
+    body.innerHTML = html || "<tr><td colspan='3'>No admins found.</td></tr>";
+  } catch(e) {
+    body.innerHTML = "<tr><td colspan='3'>Permission Error.</td></tr>";
+  }
 }
 
 async function deleteAdmin(id) {
-  if(confirm("Remove?")) { await db.collection("users").doc(id).delete(); loadAdmins(); }
+  if(confirm("Remove?")) { 
+    try {
+      await db.collection("users").doc(id).delete(); 
+      loadAdmins(); 
+    } catch(e) { alert("Permission Denied"); }
+  }
 }
 </script>
 </body>
