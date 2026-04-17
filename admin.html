@@ -53,7 +53,6 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
   <div id="dataSection">
     <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
       <h3>📤 Upload Data (CSV/Excel)</h3>
-      <p style="font-size:0.8em; color:#aaa; margin:10px 0">Upload files to add building records. Columns are auto-detected.</p>
       <input type="file" id="fileInput" accept=".csv,.xlsx">
       <button onclick="upload()">Upload & Save to Cloud</button>
     </div>
@@ -61,7 +60,7 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
     <h3>📊 Current Records</h3>
     <div style="display:flex; gap:10px; margin-top:10px">
       <button onclick="loadTable()" style="width:auto; padding:8px 15px">Refresh List</button>
-      <button onclick="clearData()" class="danger" style="width:auto; padding:8px 15px">Clear All Data</button>
+      <button onclick="clearData()" class="danger" id="clearBtn" style="width:auto; padding:8px 15px">Clear All Data</button>
     </div>
     
     <div style="overflow-x:auto; margin-top:15px">
@@ -76,13 +75,13 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
   <div id="adminSection" class="hidden">
     <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
       <h3>👥 Create New Admin</h3>
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:10px">Note: Owners can manage all data. Sub-admins can only add data.</p>
       <input id="newAdminEmail" placeholder="New Admin Email">
-      <input id="newAdminPass" type="password" placeholder="Temporary Password">
       <select id="newAdminRole">
         <option value="subadmin">Sub-Admin (Add Only)</option>
         <option value="owner">Owner (Full Access)</option>
       </select>
-      <button onclick="createAdmin()">Create Admin Account</button>
+      <button onclick="createAdmin()">Add Admin to Database</button>
     </div>
 
     <h3>Existing Admins</h3>
@@ -107,33 +106,41 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let currentUser = null;
+let currentUserRole = 'subadmin';
 
-// Initialize Firebase
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   auth = firebase.auth();
-} catch(e) { console.error("Firebase Init Error", e); }
+} catch(e) { console.error(e); }
 
 async function login() {
   const e = document.getElementById("email").value;
   const p = document.getElementById("pass").value;
-  if(!e || !p) return alert("Enter email and password");
-
   try {
     const userCred = await auth.signInWithEmailAndPassword(e, p);
-    currentUser = userCred.user;
+    // Check role
+    const userDoc = await db.collection("users").where("email", "==", e).get();
+    if(!userDoc.empty) {
+      currentUserRole = userDoc.docs[0].data().role;
+    } else {
+      // Default first user to owner if database is empty
+      currentUserRole = 'owner'; 
+    }
     showAdmin(e);
-  } catch(err) {
-    alert("Login Failed: " + err.message);
-  }
+  } catch(err) { alert("Login Failed: " + err.message); }
 }
 
 function showAdmin(user) {
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("adminView").classList.remove("hidden");
-  document.getElementById("userDisplay").textContent = "Logged in as: " + user;
+  document.getElementById("userDisplay").textContent = "Logged in as: " + user + " (" + currentUserRole.toUpperCase() + ")";
+  
+  if(currentUserRole === 'subadmin') {
+    document.getElementById("tabAdmins").classList.add("hidden");
+    document.getElementById("clearBtn").classList.add("hidden");
+  }
+  
   loadTable();
   loadAdmins();
 }
@@ -150,106 +157,79 @@ function switchTab(tab) {
 // --- DATA LOGIC ---
 async function upload() {
   const file = document.getElementById("fileInput").files[0];
-  if(!file) return alert("Select a file first");
+  if(!file) return alert("Select a file");
 
   const reader = new FileReader();
   reader.onload = async (e) => {
     let rows = [];
-    try {
-      if(file.name.endsWith("xlsx")) {
-        const wb = XLSX.read(e.target.result, {type:"binary"});
-        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-      } else {
-        const text = e.target.result;
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map(h => h.trim());
-        for(let i=1; i<lines.length; i++) {
-          if(!lines[i].trim()) continue;
-          const values = lines[i].split(",").map(v => v.trim());
-          const obj = {};
-          headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
-          rows.push(obj);
-        }
+    if(file.name.endsWith("xlsx")) {
+      const wb = XLSX.read(e.target.result, {type:"binary"});
+      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    } else {
+      const lines = e.target.result.split("\n");
+      const headers = lines[0].split(",").map(h => h.trim());
+      for(let i=1; i<lines.length; i++) {
+        if(!lines[i].trim()) continue;
+        const values = lines[i].split(",").map(v => v.trim());
+        const obj = {};
+        headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
+        rows.push(obj);
       }
+    }
 
-      let count = 0;
-      const batch = db.batch();
-      for(let row of rows) {
-        const ref = db.collection("buildings").doc();
-        batch.set(ref, row);
-        count++;
-        if(count % 400 === 0) await batch.commit(); // Firebase batch limit is 500
-      }
-      await batch.commit();
-      
-      // Also update local storage for immediate search
-      const existing = JSON.parse(localStorage.getItem("facp_data") || "[]");
-      localStorage.setItem("facp_data", JSON.stringify([...existing, ...rows]));
-      
-      alert("Successfully uploaded " + count + " records to Cloud!");
-      loadTable();
-    } catch(err) { alert("Upload Error: " + err.message); }
+    const batch = db.batch();
+    rows.forEach(row => {
+      const ref = db.collection("buildings").doc();
+      batch.set(ref, row);
+    });
+    await batch.commit();
+    localStorage.setItem("facp_data", JSON.stringify(rows));
+    alert("Uploaded " + rows.length + " records!");
+    loadTable();
   };
-
   if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
   else reader.readAsText(file);
 }
 
 async function loadTable() {
   const body = document.getElementById("tableBody");
-  body.innerHTML = "<tr><td colspan='2'>Loading...</td></tr>";
-  
-  try {
-    const snap = await db.collection("buildings").limit(100).get();
-    const data = [];
-    snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
-    
-    if(data.length === 0) {
-      body.innerHTML = "<tr><td colspan='2'>No records found in Cloud.</td></tr>";
-      return;
-    }
-
-    body.innerHTML = data.map(item => {
-      const details = Object.entries(item)
-        .filter(([k]) => k !== 'id')
-        .map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ");
-      return `<tr>
-        <td>${details}</td>
-        <td><button onclick="deleteRecord('${item.id}')" class="danger" style="padding:5px 10px; width:auto">Delete</button></td>
-      </tr>`;
-    }).join("");
-  } catch(e) { body.innerHTML = "<tr><td colspan='2'>Error loading data.</td></tr>"; }
+  const snap = await db.collection("buildings").limit(50).get();
+  let html = "";
+  snap.forEach(doc => {
+    const item = doc.data();
+    const details = Object.entries(item).map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ");
+    html += `<tr><td>${details}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteRecord('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Del</button>` : 'N/A'}</td></tr>`;
+  });
+  body.innerHTML = html || "<tr><td colspan='2'>No records.</td></tr>";
 }
 
 async function deleteRecord(id) {
-  if(!confirm("Delete this record?")) return;
-  await db.collection("buildings").doc(id).delete();
-  loadTable();
+  if(confirm("Delete?")) { await db.collection("buildings").doc(id).delete(); loadTable(); }
 }
 
 async function clearData() {
-  if(!confirm("WARNING: This will clear ALL records from the cloud. Continue?")) return;
-  const snap = await db.collection("buildings").get();
-  const batch = db.batch();
-  snap.forEach(doc => batch.delete(doc.ref));
-  await batch.commit();
-  localStorage.removeItem("facp_data");
-  loadTable();
+  if(confirm("Clear ALL cloud data?")) {
+    const snap = await db.collection("buildings").get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    localStorage.removeItem("facp_data");
+    loadTable();
+  }
 }
 
 // --- ADMIN LOGIC ---
 async function createAdmin() {
+  if(currentUserRole !== 'owner') return alert("Only Owners can add admins");
   const email = document.getElementById("newAdminEmail").value;
-  const pass = document.getElementById("newAdminPass").value;
   const role = document.getElementById("newAdminRole").value;
-
-  if(!email || !pass) return alert("Enter email and password");
+  if(!email) return alert("Enter email");
 
   try {
-    // Note: In a real app, you'd use a Cloud Function to create users to avoid logging out current admin
-    // For this assistant, we'll store the admin info in a 'users' collection
-    await db.collection("users").add({ email, role, createdAt: new Date() });
-    alert("Admin record created! Note: You must also create this user in Firebase Auth console.");
+    // We store the role in Firestore. 
+    // The actual user account must be created in Firebase Auth Console.
+    await db.collection("users").add({ email, role });
+    alert("Admin added to database! Ensure you also create the login in Firebase Auth Console.");
     loadAdmins();
   } catch(e) { alert("Error: " + e.message); }
 }
@@ -260,20 +240,13 @@ async function loadAdmins() {
   let html = "";
   snap.forEach(doc => {
     const u = doc.data();
-    html += `<tr>
-      <td>${u.email}</td>
-      <td>${u.role}</td>
-      <td><button onclick="deleteAdmin('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Remove</button></td>
-    </tr>`;
+    html += `<tr><td>${u.email}</td><td>${u.role}</td><td>${currentUserRole === 'owner' ? `<button onclick="deleteAdmin('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Remove</button>` : 'N/A'}</td></tr>`;
   });
-  body.innerHTML = html || "<tr><td colspan='3'>No additional admins found.</td></tr>";
+  body.innerHTML = html || "<tr><td colspan='3'>No admins found.</td></tr>";
 }
 
 async function deleteAdmin(id) {
-  if(confirm("Remove this admin?")) {
-    await db.collection("users").doc(id).delete();
-    loadAdmins();
-  }
+  if(confirm("Remove?")) { await db.collection("users").doc(id).delete(); loadAdmins(); }
 }
 </script>
 </body>
