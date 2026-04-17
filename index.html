@@ -2,58 +2,47 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP ASSISTANT</title>
+<title>FACP SEARCH</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family:sans-serif;
-    background:url('background.jpg') center/cover fixed;
-    color:white;
+body{
+margin:0;
+font-family:sans-serif;
+background:url('background.jpg') center/cover fixed;
+color:white;
 }
-.overlay {
-    background:rgba(0,0,0,0.7);
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
+.overlay{
+background:rgba(0,0,0,0.7);
+min-height:100vh;
+display:flex;
+flex-direction:column;
+align-items:center;
+padding:20px;
 }
-.box {
-    background:rgba(255,255,255,0.1);
-    padding:20px;
-    border-radius:15px;
-    width:100%;
-    max-width:400px;
+.box{
+width:100%;
+max-width:400px;
+background:rgba(255,255,255,0.1);
+padding:20px;
+border-radius:12px;
 }
-input,button {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
+input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:8px;
 }
-button {
-    background:#25D366;
-    color:white;
-    font-weight:bold;
-}
-.card {
-    background:white;
-    color:black;
-    padding:10px;
-    margin-top:10px;
-    border-radius:10px;
-}
-.admin-link {
-    margin-top:10px;
-    font-size:12px;
-    color:#aaa;
-    cursor:pointer;
+button{background:#25D366;color:white;}
+.card{
+background:white;
+color:black;
+margin-top:10px;
+padding:10px;
+border-radius:10px;
 }
 </style>
 </head>
@@ -62,12 +51,11 @@ button {
 <div class="overlay">
 
 <div class="box">
-<h2>FACP ASSISTANT</h2>
+<h2>FACP SEARCH</h2>
 
-<input id="search" placeholder="Search code or name">
-<button onclick="searchData()">Search</button>
-
-<div class="admin-link" onclick="goAdmin()">Admin Panel</div>
+<input id="q" placeholder="Search anything">
+<button onclick="search()">Search</button>
+<button onclick="location.href='admin.html'">Admin Panel</button>
 </div>
 
 <div id="results" style="width:100%;max-width:400px;"></div>
@@ -89,40 +77,32 @@ const db = firebase.firestore();
 
 let data = [];
 
-async function loadData() {
-    const snap = await db.collection("buildings").get();
-    data = snap.docs.map(d => d.data());
+async function load(){
+ const snap = await db.collection("buildings").get();
+ data = snap.docs.map(d=>d.data());
 }
-loadData();
+load();
 
-function searchData() {
-    const q = document.getElementById("search").value.toLowerCase();
-    const results = data.filter(d =>
-        (d.Building_Code||"").toLowerCase().includes(q) ||
-        (d.Building_Name||"").toLowerCase().includes(q)
-    );
+function search(){
+ const q = document.getElementById("q").value.toLowerCase();
 
-    const area = document.getElementById("results");
-    area.innerHTML = "";
+ const res = data.filter(d =>
+ JSON.stringify(d).toLowerCase().includes(q)
+ );
 
-    if(results.length === 0){
-        area.innerHTML = "<p>No result</p>";
-        return;
-    }
+ const out = document.getElementById("results");
+ out.innerHTML = "";
 
-    results.forEach(r=>{
-        area.innerHTML += `
-        <div class="card">
-        <b>${r.Building_Name}</b><br>
-        Code: ${r.Building_Code}<br>
-        Zone: ${r.Zone_or_Details || "-"}
-        </div>`;
-    });
-}
+ if(res.length===0){
+ out.innerHTML="No result";
+ return;
+ }
 
-function goAdmin(){
-    window.location.href = "admin.html";
+ res.forEach(r=>{
+ out.innerHTML += `<div class="card">${r.raw || JSON.stringify(r)}</div>`;
+ });
 }
 </script>
+
 </body>
 </html>
