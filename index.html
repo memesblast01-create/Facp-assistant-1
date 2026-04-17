@@ -3,76 +3,278 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP SEARCH</title>
+<title>FACP Assistant - Building Search System</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#0f0f0f;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-  background-image:url("background.jpg");
-  background-size:cover;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.container{
-  width:90%;
-  max-width:600px;
-  backdrop-filter: blur(12px);
-  background: rgba(0,0,0,0.6);
-  padding:20px;
-  border-radius:15px;
-  text-align:center;
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("background.jpg");
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
 }
 
-input{
-  width:100%;
-  padding:15px;
-  border:none;
-  border-radius:10px;
-  margin-top:10px;
+.main-container {
+  width: 100%;
+  max-width: 700px;
+  backdrop-filter: blur(15px);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-button{
-  width:100%;
-  padding:15px;
-  margin-top:10px;
-  border:none;
-  border-radius:10px;
-  background:#25D366;
-  font-weight:bold;
-  cursor:pointer;
+.header {
+  text-align: center;
+  margin-bottom: 30px;
 }
 
-.card{
-  background:white;
-  color:black;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
+.header h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header p {
+  color: #aaa;
+  font-size: 0.95em;
+}
+
+.search-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.search-container input {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1em;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  transition: all 0.3s ease;
+}
+
+.search-container input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.3);
+}
+
+.search-container button {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1em;
+}
+
+.search-container button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 211, 102, 0.4);
+}
+
+.search-container button:active {
+  transform: translateY(0);
+}
+
+.admin-btn {
+  display: block;
+  margin: 20px auto 0;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.results-container {
+  margin-top: 30px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.result-card {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.1), rgba(18, 140, 126, 0.1));
+  border: 1px solid rgba(37, 211, 102, 0.3);
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.result-card:hover {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.2), rgba(18, 140, 126, 0.2));
+  border-color: rgba(37, 211, 102, 0.6);
+  transform: translateX(5px);
+}
+
+.result-card-code {
+  font-weight: bold;
+  color: #25D366;
+  font-size: 1.1em;
+  margin-bottom: 5px;
+}
+
+.result-card-name {
+  color: #fff;
+  margin-bottom: 5px;
+  font-size: 1em;
+}
+
+.result-card-details {
+  color: #aaa;
+  font-size: 0.9em;
+}
+
+.result-card-field {
+  color: #999;
+  font-size: 0.85em;
+  margin-top: 5px;
+}
+
+.no-results {
+  text-align: center;
+  color: #aaa;
+  padding: 20px;
+  font-style: italic;
+}
+
+.loading {
+  text-align: center;
+  color: #aaa;
+  padding: 20px;
+}
+
+.message {
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  animation: slideIn 0.3s ease;
+}
+
+.message.success {
+  background: rgba(37, 211, 102, 0.2);
+  color: #25D366;
+  border: 1px solid rgba(37, 211, 102, 0.5);
+}
+
+.message.error {
+  background: rgba(255, 67, 54, 0.2);
+  color: #FF4336;
+  border: 1px solid rgba(255, 67, 54, 0.5);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.results-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.results-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.results-container::-webkit-scrollbar-thumb {
+  background: rgba(37, 211, 102, 0.3);
+  border-radius: 10px;
+}
+
+.results-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 211, 102, 0.5);
+}
+
+@media (max-width: 600px) {
+  .main-container {
+    padding: 20px;
+  }
+
+  .header h1 {
+    font-size: 1.8em;
+  }
+
+  .search-container {
+    flex-direction: column;
+  }
+
+  .search-container button {
+    width: 100%;
+  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-  <h2>FACP SEARCH SYSTEM</h2>
+<div class="main-container">
+  <div class="header">
+    <h1>🏢 FACP Assistant</h1>
+    <p>Building Search System</p>
+  </div>
 
-  <input id="q" placeholder="Search anything...">
-  <button onclick="search()">SEARCH</button>
+  <div id="message"></div>
 
-  <div id="res"></div>
+  <div class="search-container">
+    <input id="searchInput" type="text" placeholder="Search by code, name, zone, or any field...">
+    <button onclick="performSearch()">SEARCH</button>
+  </div>
+
+  <button class="admin-btn" onclick="goToAdmin()">Admin Panel</button>
+
+  <div class="results-container" id="resultsContainer">
+    <div class="loading" id="loadingMsg" style="display:none;">Loading data...</div>
+  </div>
 </div>
 
 <script>
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
   authDomain: "facp-assistant.firebaseapp.com",
@@ -85,34 +287,124 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let data = [];
+// Local fallback data
+const fallbackData = [
+  { Building_Code: "B001", Building_Name: "Central Tower", Zone_or_Details: "Downtown" },
+  { Building_Code: "B002", Building_Name: "North Plaza", Zone_or_Details: "North District" },
+  { Building_Code: "B003", Building_Name: "South Complex", Zone_or_Details: "South Area" }
+];
 
-db.collection("buildings").get().then(snap=>{
-  snap.forEach(d=>data.push(d.data()));
-});
+let buildingsData = [];
+let searchTimeout;
 
-function search(){
-  let q = qBox();
-
-  let out = data.filter(item =>
-    Object.values(item).some(v =>
-      (v+"").toLowerCase().includes(q)
-    )
-  );
-
-  document.getElementById("res").innerHTML =
-    out.map(x=>`
-      <div class="card">
-        <b>${x.Building_Code||""}</b><br>
-        ${x.Building_Name||""}<br>
-        ${x.Zone_or_Details||""}
-      </div>
-    `).join("");
+// Initialize app
+function initApp() {
+  loadBuildingsData();
+  document.getElementById("searchInput").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") performSearch();
+  });
 }
 
-function qBox(){
-  return document.getElementById("q").value.toLowerCase();
+// Load buildings data from Firestore with fallback
+function loadBuildingsData() {
+  document.getElementById("loadingMsg").style.display = "block";
+  
+  db.collection("buildings").get()
+    .then(snapshot => {
+      buildingsData = [];
+      snapshot.forEach(doc => {
+        buildingsData.push(doc.data());
+      });
+      
+      if (buildingsData.length === 0) {
+        buildingsData = fallbackData;
+        showMessage("Using fallback data. No data in Firestore.", "info");
+      }
+      
+      document.getElementById("loadingMsg").style.display = "none";
+    })
+    .catch(error => {
+      console.error("Error loading data:", error);
+      buildingsData = fallbackData;
+      showMessage("Using offline data. Check Firebase connection.", "error");
+      document.getElementById("loadingMsg").style.display = "none";
+    });
 }
+
+// Debounced search function
+function performSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    const query = document.getElementById("searchInput").value.toLowerCase().trim();
+    
+    if (query === "") {
+      document.getElementById("resultsContainer").innerHTML = 
+        '<div class="no-results">Enter a search term to begin...</div>';
+      return;
+    }
+
+    const results = buildingsData.filter(item => {
+      // Value-based search: check all fields
+      return Object.values(item).some(value => {
+        const strValue = String(value || "").toLowerCase();
+        return strValue.includes(query);
+      });
+    });
+
+    displayResults(results, query);
+  }, 300);
+}
+
+// Display search results
+function displayResults(results, query) {
+  const container = document.getElementById("resultsContainer");
+  
+  if (results.length === 0) {
+    container.innerHTML = '<div class="no-results">No results found for "' + query + '"</div>';
+    return;
+  }
+
+  let html = '';
+  results.forEach(item => {
+    html += `
+      <div class="result-card">
+        <div class="result-card-code">${item.Building_Code || 'N/A'}</div>
+        <div class="result-card-name">${item.Building_Name || 'N/A'}</div>
+        <div class="result-card-details">${item.Zone_or_Details || 'N/A'}</div>
+    `;
+    
+    // Display any extra fields dynamically
+    Object.keys(item).forEach(key => {
+      if (!['Building_Code', 'Building_Name', 'Zone_or_Details'].includes(key)) {
+        html += `<div class="result-card-field"><strong>${key}:</strong> ${item[key] || 'N/A'}</div>`;
+      }
+    });
+    
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+// Show message
+function showMessage(text, type = "success") {
+  const msgDiv = document.getElementById("message");
+  msgDiv.textContent = text;
+  msgDiv.className = "message " + type;
+  msgDiv.style.display = "block";
+  
+  setTimeout(() => {
+    msgDiv.style.display = "none";
+  }, 4000);
+}
+
+// Navigate to admin panel
+function goToAdmin() {
+  window.location.href = "admin.html";
+}
+
+// Initialize on page load
+window.addEventListener("load", initApp);
 </script>
 
 </body>
