@@ -1,211 +1,205 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel</title>
+<meta charset="UTF-8">
+<title>ADMIN PANEL</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
 body{
-margin:0;
-font-family:sans-serif;
-background:url('background.jpg') center/cover fixed;
-color:white;
+  margin:0;
+  font-family:Arial;
+  background:url("background.jpg") center/cover fixed;
 }
 .overlay{
-background:rgba(0,0,0,0.85);
-min-height:100vh;
-padding:20px;
+  min-height:100vh;
+  background:rgba(0,0,0,0.7);
+  display:flex;
+  justify-content:center;
+  padding:20px;
 }
-.card{
-background:rgba(255,255,255,0.1);
-padding:15px;
-border-radius:12px;
-margin-bottom:10px;
+.panel{
+  width:100%;
+  max-width:520px;
+  background:white;
+  padding:20px;
+  border-radius:15px;
 }
-input,button{
-width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:8px;
-font-size:14px;
+input,button,select{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
 }
 button{
-background:#25D366;
-color:white;
-font-weight:bold;
-cursor:pointer;
+  background:#25D366;
+  color:white;
+  border:none;
+  cursor:pointer;
 }
-button:active{
-transform:scale(0.98);
+.red{
+  background:red !important;
 }
-.small{
-font-size:12px;
-opacity:0.7;
-margin-top:5px;
+.item{
+  padding:10px;
+  border-bottom:1px solid #ddd;
 }
-#errorBox{
-color:red;
-margin-top:10px;
-font-size:13px;
-}
+small{color:#555}
 </style>
 </head>
 
 <body>
 <div class="overlay">
+<div class="panel">
 
-<h2>ADMIN PANEL</h2>
+<h3>ADMIN LOGIN</h3>
 
-<div id="loginBox" class="card">
-<h3>Login</h3>
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
-<div id="errorBox"></div>
-</div>
+<input id="email" placeholder="email">
+<input id="pass" type="password" placeholder="password">
+<button onclick="login()">LOGIN</button>
 
-<div id="panel" style="display:none;">
+<hr>
 
-<div class="card">
-<h3>Upload File</h3>
 <input type="file" id="file">
-<button onclick="uploadFile()">UPLOAD</button>
-<div class="small">Supports Excel (.xlsx) and CSV</div>
-</div>
+<button onclick="uploadFile()">UPLOAD CSV / EXCEL</button>
 
-<div class="card">
-<h3>Add Admin</h3>
-<input id="newAdmin" placeholder="Admin Email">
-<button onclick="addAdmin()">Add Admin</button>
-</div>
+<input id="adminEmail" placeholder="new admin email">
+<select id="roleSelect">
+  <option value="admin">Admin</option>
+  <option value="uploader">Uploader</option>
+</select>
+<button onclick="addAdmin()">ADD ADMIN</button>
 
-<div class="card">
-<h3>Data</h3>
+<hr>
+
+<h3>DATABASE</h3>
 <div id="list"></div>
-</div>
 
 </div>
-
 </div>
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
-  authDomain: "facp-assistant.firebaseapp.com",
-  projectId: "facp-assistant",
-  storageBucket: "facp-assistant.firebasestorage.app",
-  messagingSenderId: "771947694967",
-  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-function showError(msg){
- document.getElementById("errorBox").innerText = msg;
-}
+let role = "";
 
 async function login(){
- try {
-  const user = await auth.signInWithEmailAndPassword(email.value, pass.value);
+  const e = email.value;
+  const p = pass.value;
 
-  document.getElementById("loginBox").style.display="none";
-  document.getElementById("panel").style.display="block";
+  try{
+    await auth.signInWithEmailAndPassword(e,p);
 
-  loadData();
- }
- catch(err){
-  showError(err.message);
- }
+    const snap = await db.collection("users")
+      .where("email","==",e)
+      .get();
+
+    snap.forEach(d=>{
+      role = d.data().role;
+    });
+
+    alert("Logged in as: " + role);
+    loadData();
+  }catch(err){
+    alert(err.message);
+  }
 }
 
-function uploadFile(){
+async function uploadFile(){
+  const file = document.getElementById("file").files[0];
+  const reader = new FileReader();
 
- const file = document.getElementById("file").files[0];
+  reader.onload = async function(e){
 
- if(!file){
- alert("Select a file first");
- return;
- }
+    let data = [];
 
- const reader = new FileReader();
+    if(file.name.endsWith(".xlsx")){
+      const wb = XLSX.read(e.target.result,{type:"binary"});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      data = XLSX.utils.sheet_to_json(sheet);
+    } else {
+      data = e.target.result.split("\n").map(l=>{
+        const [c,n,z] = l.split(",");
+        return {
+          Building_Code:c?.trim(),
+          Building_Name:n?.trim(),
+          Zone_or_Details:z?.trim()
+        };
+      });
+    }
 
- reader.onerror = () => {
- alert("File reading failed");
- };
+    for(let d of data){
+      if(d.Building_Code || d.Building_Name){
+        await db.collection("buildings").add(d);
+      }
+    }
 
- reader.onload = async (e)=>{
+    alert("Upload complete");
+    loadData();
+  };
 
- try {
-
- const data = new Uint8Array(e.target.result);
- const wb = XLSX.read(data,{type:"array"});
- const sheet = wb.Sheets[wb.SheetNames[0]];
- const json = XLSX.utils.sheet_to_json(sheet,{header:1});
-
- const batch = db.batch();
-
- json.forEach(row=>{
- if(!row || row.length===0) return;
-
- const ref = db.collection("buildings").doc();
-
- batch.set(ref,{
- raw: row.join(" "),
- createdAt: Date.now()
- });
- });
-
- await batch.commit();
-
- alert("Upload successful");
- loadData();
-
- }
- catch(err){
- alert("Upload failed: " + err.message);
- }
-
- };
-
- reader.readAsArrayBuffer(file);
+  if(file.name.endsWith(".xlsx")){
+    reader.readAsBinaryString(file);
+  } else {
+    reader.readAsText(file);
+  }
 }
 
 async function addAdmin(){
+  if(role !== "owner"){
+    return alert("Only owner can add admins");
+  }
 
- try {
- await db.collection("admins").doc(newAdmin.value).set({
- email: newAdmin.value,
- role: "uploader"
- });
+  await db.collection("users").add({
+    email: adminEmail.value,
+    role: roleSelect.value
+  });
 
- alert("Admin added");
- }
- catch(err){
- alert(err.message);
- }
+  alert("Admin added");
 }
 
 async function loadData(){
+  const snap = await db.collection("buildings").get();
+  const box = document.getElementById("list");
+  box.innerHTML = "";
 
- const snap = await db.collection("buildings").get();
- const list = document.getElementById("list");
- list.innerHTML="";
+  snap.forEach(doc=>{
+    const x = doc.data();
 
- snap.forEach(d=>{
- list.innerHTML += `
- <div class="card">
- ${d.data().raw}
- </div>`;
- });
+    const div = document.createElement("div");
+    div.className = "item";
 
+    div.innerHTML = `
+      <b>${x.Building_Code || "-"}</b><br>
+      ${x.Building_Name || "-"}<br>
+      <small>${x.Zone_or_Details || ""}</small><br>
+      <button class="red" onclick="deleteItem('${doc.id}')">DELETE</button>
+    `;
+
+    box.appendChild(div);
+  });
+}
+
+async function deleteItem(id){
+  if(role !== "owner" && role !== "admin"){
+    return alert("No permission");
+  }
+
+  await db.collection("buildings").doc(id).delete();
+
+  alert("Deleted");
+  loadData();
 }
 </script>
 
