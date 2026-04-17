@@ -3,57 +3,96 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP Admin - Manus Mode</title>
+<title>FACP Admin - Data & Admin Management</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: sans-serif; background: #0a0e27; color: white; padding: 20px; }
-.box { max-width: 500px; margin: 50px auto; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 15px; border: 1px solid #25D366; }
-input, button, select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; }
-button { background: #25D366; color: black; font-weight: bold; cursor: pointer; }
+body { font-family: 'Segoe UI', sans-serif; background: #0a0e27; color: white; padding: 20px; }
+.box { max-width: 800px; margin: 20px auto; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 15px; border: 1px solid #25D366; }
+input, button, select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; }
+button { background: #25D366; color: black; font-weight: bold; cursor: pointer; border: none; }
+button:hover { opacity: 0.9; }
 .hidden { display: none; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 10px; border: 1px solid #333; text-align: left; }
-.status { text-align: center; margin-bottom: 10px; font-size: 0.8em; color: #25D366; }
+.tab-btn { width: auto; padding: 10px 20px; margin-right: 10px; background: #333; color: white; }
+.tab-btn.active { background: #25D366; color: black; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+th, td { padding: 12px; border: 1px solid #333; text-align: left; }
+th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
+.status { text-align: center; margin-bottom: 15px; font-size: 0.9em; color: #25D366; }
+.danger { background: #ff4336; color: white; }
 </style>
 </head>
 <body>
 
-<div id="loginView" class="box">
-  <h2>Admin Login</h2>
-  <p class="status">Manus Mode: Use any email/pass to login locally</p>
+<div id="loginView" class="box" style="max-width: 400px;">
+  <h2 style="text-align:center">Admin Login</h2>
+  <p class="status">Enter credentials to manage system</p>
   <input id="email" placeholder="Email">
   <input id="pass" type="password" placeholder="Password">
   <button onclick="login()">LOGIN</button>
   <button onclick="location.href='index.html'" style="background:none; color:#aaa; margin-top:10px">Back to Search</button>
 </div>
 
-<div id="adminView" class="box hidden" style="max-width: 800px;">
-  <h2>Admin Dashboard</h2>
-  <p id="userDisplay" class="status"></p>
+<div id="adminView" class="box hidden">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()" style="width:auto; padding:8px 15px; background:#444; color:white">Logout</button>
+  </div>
   
-  <div style="margin-top:20px; border-top:1px solid #333; padding-top:20px">
-    <h3>Upload Data (CSV/Excel)</h3>
-    <input type="file" id="fileInput">
-    <button onclick="upload()">Upload & Save</button>
+  <p id="userDisplay" class="status"></p>
+
+  <div style="margin-bottom:20px">
+    <button class="tab-btn active" id="tabData" onclick="switchTab('data')">Data Management</button>
+    <button class="tab-btn" id="tabAdmins" onclick="switchTab('admins')">Manage Admins</button>
   </div>
 
-  <div style="margin-top:20px; border-top:1px solid #333; padding-top:20px">
-    <h3>Current Data</h3>
-    <button onclick="loadTable()" style="width:auto; padding:5px 15px">Refresh</button>
-    <button onclick="clearData()" style="width:auto; padding:5px 15px; background:red; color:white">Clear All</button>
-    <div style="overflow-x:auto">
+  <!-- Data Management Tab -->
+  <div id="dataSection">
+    <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
+      <h3>📤 Upload Data (CSV/Excel)</h3>
+      <p style="font-size:0.8em; color:#aaa; margin:10px 0">Upload files to add building records. Columns are auto-detected.</p>
+      <input type="file" id="fileInput" accept=".csv,.xlsx">
+      <button onclick="upload()">Upload & Save to Cloud</button>
+    </div>
+
+    <h3>📊 Current Records</h3>
+    <div style="display:flex; gap:10px; margin-top:10px">
+      <button onclick="loadTable()" style="width:auto; padding:8px 15px">Refresh List</button>
+      <button onclick="clearData()" class="danger" style="width:auto; padding:8px 15px">Clear All Data</button>
+    </div>
+    
+    <div style="overflow-x:auto; margin-top:15px">
       <table>
-        <thead><tr><th>Code</th><th>Name</th><th>Zone</th><th>Action</th></tr></thead>
+        <thead><tr id="tableHead"><th>Details</th><th>Action</th></tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
     </div>
   </div>
-  
-  <button onclick="logout()" style="background:#444; color:white; margin-top:30px">Logout</button>
+
+  <!-- Admin Management Tab -->
+  <div id="adminSection" class="hidden">
+    <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
+      <h3>👥 Create New Admin</h3>
+      <input id="newAdminEmail" placeholder="New Admin Email">
+      <input id="newAdminPass" type="password" placeholder="Temporary Password">
+      <select id="newAdminRole">
+        <option value="subadmin">Sub-Admin (Add Only)</option>
+        <option value="owner">Owner (Full Access)</option>
+      </select>
+      <button onclick="createAdmin()">Create Admin Account</button>
+    </div>
+
+    <h3>Existing Admins</h3>
+    <div style="overflow-x:auto; margin-top:15px">
+      <table>
+        <thead><tr><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+        <tbody id="adminTableBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -68,29 +107,26 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let isFirebase = false;
+let currentUser = null;
 
+// Initialize Firebase
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   auth = firebase.auth();
-  isFirebase = true;
-} catch(e) { console.log("Running in Local Mode"); }
+} catch(e) { console.error("Firebase Init Error", e); }
 
 async function login() {
   const e = document.getElementById("email").value;
   const p = document.getElementById("pass").value;
+  if(!e || !p) return alert("Enter email and password");
 
-  if (isFirebase) {
-    try {
-      await auth.signInWithEmailAndPassword(e, p);
-      showAdmin(e);
-    } catch(err) {
-      console.log("Firebase login failed, trying Local Mode...");
-      if(e && p) showAdmin(e + " (Local)");
-    }
-  } else {
-    if(e && p) showAdmin(e + " (Local)");
+  try {
+    const userCred = await auth.signInWithEmailAndPassword(e, p);
+    currentUser = userCred.user;
+    showAdmin(e);
+  } catch(err) {
+    alert("Login Failed: " + err.message);
   }
 }
 
@@ -99,71 +135,144 @@ function showAdmin(user) {
   document.getElementById("adminView").classList.remove("hidden");
   document.getElementById("userDisplay").textContent = "Logged in as: " + user;
   loadTable();
+  loadAdmins();
 }
 
-function logout() { location.reload(); }
+function logout() { auth.signOut().then(() => location.reload()); }
 
-function upload() {
+function switchTab(tab) {
+  document.getElementById("dataSection").classList.toggle("hidden", tab !== 'data');
+  document.getElementById("adminSection").classList.toggle("hidden", tab !== 'admins');
+  document.getElementById("tabData").classList.toggle("active", tab === 'data');
+  document.getElementById("tabAdmins").classList.toggle("active", tab === 'admins');
+}
+
+// --- DATA LOGIC ---
+async function upload() {
   const file = document.getElementById("fileInput").files[0];
-  if(!file) return alert("Select a file");
+  if(!file) return alert("Select a file first");
 
   const reader = new FileReader();
   reader.onload = async (e) => {
     let rows = [];
-    if(file.name.endsWith("xlsx")) {
-      const wb = XLSX.read(e.target.result, {type:"binary"});
-      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-    } else {
-      rows = e.target.result.split("\n").map(r => r.split(","));
-    }
+    try {
+      if(file.name.endsWith("xlsx")) {
+        const wb = XLSX.read(e.target.result, {type:"binary"});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      } else {
+        const text = e.target.result;
+        const lines = text.split("\n");
+        const headers = lines[0].split(",").map(h => h.trim());
+        for(let i=1; i<lines.length; i++) {
+          if(!lines[i].trim()) continue;
+          const values = lines[i].split(",").map(v => v.trim());
+          const obj = {};
+          headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
+          rows.push(obj);
+        }
+      }
 
-    const newData = [];
-    for(let r of rows) {
-      if(r.length < 2) continue;
-      const obj = {
-        Building_Code: String(r[0] || "").trim(),
-        Building_Name: String(r[1] || "").trim(),
-        Zone_or_Details: String(r[2] || "").trim()
-      };
-      newData.push(obj);
-      if(isFirebase) db.collection("buildings").add(obj).catch(err => console.log(err));
-    }
-
-    // Save to Local Storage
-    const existing = JSON.parse(localStorage.getItem("facp_data") || "[]");
-    localStorage.setItem("facp_data", JSON.stringify([...existing, ...newData]));
-    alert("Uploaded " + newData.length + " records!");
-    loadTable();
+      let count = 0;
+      const batch = db.batch();
+      for(let row of rows) {
+        const ref = db.collection("buildings").doc();
+        batch.set(ref, row);
+        count++;
+        if(count % 400 === 0) await batch.commit(); // Firebase batch limit is 500
+      }
+      await batch.commit();
+      
+      // Also update local storage for immediate search
+      const existing = JSON.parse(localStorage.getItem("facp_data") || "[]");
+      localStorage.setItem("facp_data", JSON.stringify([...existing, ...rows]));
+      
+      alert("Successfully uploaded " + count + " records to Cloud!");
+      loadTable();
+    } catch(err) { alert("Upload Error: " + err.message); }
   };
 
   if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
   else reader.readAsText(file);
 }
 
-function loadTable() {
-  const localData = JSON.parse(localStorage.getItem("facp_data") || "[]");
+async function loadTable() {
   const body = document.getElementById("tableBody");
-  body.innerHTML = localData.map((item, idx) => `
-    <tr>
-      <td>${item.Building_Code}</td>
-      <td>${item.Building_Name}</td>
-      <td>${item.Zone_or_Details}</td>
-      <td><button onclick="deleteItem(${idx})" style="background:red; color:white; padding:2px 5px; width:auto">Del</button></td>
-    </tr>
-  `).join("");
+  body.innerHTML = "<tr><td colspan='2'>Loading...</td></tr>";
+  
+  try {
+    const snap = await db.collection("buildings").limit(100).get();
+    const data = [];
+    snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+    
+    if(data.length === 0) {
+      body.innerHTML = "<tr><td colspan='2'>No records found in Cloud.</td></tr>";
+      return;
+    }
+
+    body.innerHTML = data.map(item => {
+      const details = Object.entries(item)
+        .filter(([k]) => k !== 'id')
+        .map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ");
+      return `<tr>
+        <td>${details}</td>
+        <td><button onclick="deleteRecord('${item.id}')" class="danger" style="padding:5px 10px; width:auto">Delete</button></td>
+      </tr>`;
+    }).join("");
+  } catch(e) { body.innerHTML = "<tr><td colspan='2'>Error loading data.</td></tr>"; }
 }
 
-function deleteItem(idx) {
-  const data = JSON.parse(localStorage.getItem("facp_data") || "[]");
-  data.splice(idx, 1);
-  localStorage.setItem("facp_data", JSON.stringify(data));
+async function deleteRecord(id) {
+  if(!confirm("Delete this record?")) return;
+  await db.collection("buildings").doc(id).delete();
   loadTable();
 }
 
-function clearData() {
-  if(confirm("Clear all local data?")) {
-    localStorage.removeItem("facp_data");
-    loadTable();
+async function clearData() {
+  if(!confirm("WARNING: This will clear ALL records from the cloud. Continue?")) return;
+  const snap = await db.collection("buildings").get();
+  const batch = db.batch();
+  snap.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+  localStorage.removeItem("facp_data");
+  loadTable();
+}
+
+// --- ADMIN LOGIC ---
+async function createAdmin() {
+  const email = document.getElementById("newAdminEmail").value;
+  const pass = document.getElementById("newAdminPass").value;
+  const role = document.getElementById("newAdminRole").value;
+
+  if(!email || !pass) return alert("Enter email and password");
+
+  try {
+    // Note: In a real app, you'd use a Cloud Function to create users to avoid logging out current admin
+    // For this assistant, we'll store the admin info in a 'users' collection
+    await db.collection("users").add({ email, role, createdAt: new Date() });
+    alert("Admin record created! Note: You must also create this user in Firebase Auth console.");
+    loadAdmins();
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+async function loadAdmins() {
+  const body = document.getElementById("adminTableBody");
+  const snap = await db.collection("users").get();
+  let html = "";
+  snap.forEach(doc => {
+    const u = doc.data();
+    html += `<tr>
+      <td>${u.email}</td>
+      <td>${u.role}</td>
+      <td><button onclick="deleteAdmin('${doc.id}')" class="danger" style="padding:5px 10px; width:auto">Remove</button></td>
+    </tr>`;
+  });
+  body.innerHTML = html || "<tr><td colspan='3'>No additional admins found.</td></tr>";
+}
+
+async function deleteAdmin(id) {
+  if(confirm("Remove this admin?")) {
+    await db.collection("users").doc(id).delete();
+    loadAdmins();
   }
 }
 </script>
