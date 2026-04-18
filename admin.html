@@ -3,38 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP Admin</title>
+<title>FACP Admin Panel</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
-html, body { height: 100%; width: 100%; }
-
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
   padding: 20px;
-  color: #333;
 }
 
-.container {
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.box {
+  width: 90%;
+  max-width: 500px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 30px;
+  border-radius: 15px;
+  border: 1px solid #25D366;
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: #25D366;
+}
+
+input, button, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: white;
+  font-size: 1em;
+}
+
+button {
+  background: #25D366;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.hidden { display: none; }
+
+.dashboard {
   max-width: 900px;
   margin: 0 auto;
 }
 
-.card {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  margin-bottom: 20px;
-}
-
-.header-bar {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -43,55 +78,25 @@ body {
   gap: 15px;
 }
 
-.title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #333;
-}
-
-.logout-btn {
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.logout-btn:hover {
-  background: #ff5252;
-}
-
-.user-info {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
 .tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #333;
 }
 
 .tab-btn {
-  background: none;
+  background: transparent;
+  color: #aaa;
   border: none;
-  padding: 12px 20px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #999;
+  padding: 10px 20px;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
 }
 
 .tab-btn.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: #25D366;
+  border-bottom-color: #25D366;
 }
 
 .tab-content {
@@ -102,153 +107,56 @@ body {
   display: block;
 }
 
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: inherit;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 14px;
-  transition: transform 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-}
-
-.btn-danger {
-  background: #ff6b6b;
-}
-
-.btn-danger:hover {
-  background: #ff5252;
-}
-
-.btn-secondary {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #e0e0e0;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
 }
 
-th {
-  background: #f9f9f9;
+th, td {
   padding: 12px;
+  border: 1px solid #333;
   text-align: left;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid #f0f0f0;
-  font-size: 14px;
 }
 
-td {
-  padding: 12px;
-  border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
+th {
+  background: rgba(37, 211, 102, 0.1);
+  color: #25D366;
 }
 
-tr:hover {
-  background: #f9f9f9;
-}
-
-.action-btn {
+.danger {
+  background: #ff4336;
+  color: white;
   padding: 6px 12px;
-  font-size: 12px;
-  margin-right: 8px;
+  width: auto;
 }
 
-.hidden {
-  display: none;
+.danger:hover {
+  background: #ff1744;
 }
 
-.message {
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  font-weight: 500;
+.logout-btn {
+  background: #444;
+  color: white;
+  padding: 10px 20px;
+  width: auto;
 }
 
-.message.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.message.error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.no-data {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
-}
-
-@media (max-width: 768px) {
-  .card {
-    padding: 20px;
+@media (max-width: 600px) {
+  .box {
+    max-width: 100%;
   }
 
-  .header-bar {
+  .header {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .title {
-    font-size: 24px;
-  }
-
-  .tabs {
-    flex-wrap: wrap;
-  }
-
   table {
-    font-size: 12px;
+    font-size: 0.9em;
   }
 
-  td, th {
+  th, td {
     padding: 8px;
   }
 }
@@ -256,33 +164,25 @@ tr:hover {
 </head>
 <body>
 
-<div class="container">
-  <!-- LOGIN VIEW -->
-  <div id="loginView" class="card" style="max-width: 400px; margin: 60px auto;">
-    <h2 style="margin-bottom: 30px; text-align: center;">Admin Login</h2>
-    <div id="loginMsg" class="message hidden"></div>
-    
-    <div class="form-group">
-      <label>Email</label>
-      <input id="email" type="email" placeholder="your@email.com">
-    </div>
-    
-    <div class="form-group">
-      <label>Password</label>
-      <input id="pass" type="password" placeholder="••••••••">
-    </div>
-    
-    <button class="btn" onclick="login()" style="width: 100%; margin-bottom: 10px;">Login</button>
-    <button class="btn btn-secondary" onclick="location.href='index.html'" style="width: 100%;">Back to Search</button>
+<!-- LOGIN VIEW -->
+<div id="loginView" class="center">
+  <div class="box">
+    <h2>Admin Login</h2>
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">LOGIN</button>
+    <button onclick="location.href='index.html'" style="background:none; color:#aaa; margin-top:10px">Back to Search</button>
   </div>
+</div>
 
-  <!-- ADMIN VIEW -->
-  <div id="adminView" class="hidden">
-    <div class="card">
-      <div class="header-bar">
+<!-- ADMIN VIEW -->
+<div id="adminView" class="hidden">
+  <div class="dashboard">
+    <div class="box">
+      <div class="header">
         <div>
-          <h2 class="title">Admin Panel</h2>
-          <div class="user-info" id="userInfo"></div>
+          <h2>Admin Dashboard</h2>
+          <p id="userInfo" style="color:#aaa; font-size:0.9em; margin-top:5px;"></p>
         </div>
         <button class="logout-btn" onclick="logout()">Logout</button>
       </div>
@@ -294,58 +194,37 @@ tr:hover {
 
       <!-- DATA TAB -->
       <div id="dataTab" class="tab-content active">
-        <div class="form-group">
-          <label>Upload CSV or Excel File</label>
-          <input type="file" id="fileInput" accept=".csv,.xlsx">
-        </div>
-        <button class="btn" onclick="upload()">Upload Data</button>
+        <h3>Upload Data</h3>
+        <input type="file" id="fileInput" accept=".csv,.xlsx">
+        <button onclick="upload()">Upload File</button>
 
-        <div style="margin-top: 30px; display: flex; gap: 10px;">
-          <button class="btn" onclick="loadTable()">Refresh</button>
-          <button class="btn btn-danger" id="clearBtn" onclick="clearData()">Clear All</button>
+        <div style="margin-top: 20px;">
+          <button onclick="loadTable()" style="width:auto; padding:8px 15px">Refresh</button>
+          <button onclick="clearData()" class="danger" id="clearBtn" style="width:auto; padding:8px 15px; margin-left:10px">Clear All</button>
         </div>
 
-        <div style="overflow-x: auto; margin-top: 20px;">
-          <table id="dataTable">
-            <thead>
-              <tr><th>Details</th><th>Action</th></tr>
-            </thead>
-            <tbody id="dataBody"></tbody>
-          </table>
-        </div>
+        <table>
+          <thead><tr><th>Details</th><th>Action</th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
       </div>
 
       <!-- ADMINS TAB -->
       <div id="adminsTab" class="tab-content">
-        <div class="form-group">
-          <label>Email</label>
-          <input id="newAdminEmail" type="email" placeholder="admin@example.com">
-        </div>
+        <h3>Create New Admin</h3>
+        <input id="newAdminEmail" type="email" placeholder="Email">
+        <input id="newAdminPass" type="password" placeholder="Password">
+        <select id="newAdminRole">
+          <option value="subadmin">Sub-Admin (Add Only)</option>
+          <option value="owner">Owner (Full Access)</option>
+        </select>
+        <button onclick="createAdmin()">Create Admin</button>
 
-        <div class="form-group">
-          <label>Password</label>
-          <input id="newAdminPass" type="password" placeholder="••••••••">
-        </div>
-
-        <div class="form-group">
-          <label>Role</label>
-          <select id="newAdminRole">
-            <option value="subadmin">Sub-Admin (Add Only)</option>
-            <option value="owner">Owner (Full Access)</option>
-          </select>
-        </div>
-
-        <button class="btn" onclick="createAdmin()">Create Admin</button>
-
-        <div style="margin-top: 40px;">
-          <h3 style="margin-bottom: 20px;">Existing Admins</h3>
-          <table id="adminsTable">
-            <thead>
-              <tr><th>Email</th><th>Role</th><th>Action</th></tr>
-            </thead>
-            <tbody id="adminsBody"></tbody>
-          </table>
-        </div>
+        <h3 style="margin-top: 30px;">Existing Admins</h3>
+        <table>
+          <thead><tr><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+          <tbody id="adminsBody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -374,7 +253,7 @@ async function login() {
   const email = document.getElementById("email").value.trim();
   const pass = document.getElementById("pass").value.trim();
   
-  if(!email || !pass) return showMsg("Enter email and password", "error", "loginMsg");
+  if(!email || !pass) return alert("Enter email and password");
 
   try {
     await auth.signInWithEmailAndPassword(email, pass);
@@ -390,14 +269,14 @@ async function login() {
     
     showAdmin(email);
   } catch(err) { 
-    showMsg("Login Failed: " + err.message, "error", "loginMsg");
+    alert("Login Failed: " + err.message);
   }
 }
 
 function showAdmin(email) {
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("adminView").classList.remove("hidden");
-  document.getElementById("userInfo").textContent = `Logged in as: ${email} (${currentUserRole.toUpperCase()})`;
+  document.getElementById("userInfo").textContent = "Logged in as: " + email + " (" + currentUserRole.toUpperCase() + ")";
   
   if(currentUserRole === 'subadmin') {
     document.getElementById("adminTabBtn").classList.add("hidden");
@@ -474,17 +353,17 @@ async function loadTable() {
       const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(" | ");
       html += `<tr>
         <td>${details}</td>
-        <td>${currentUserRole === 'owner' ? `<button class="btn btn-danger action-btn" onclick="deleteRecord('${doc.id}')">Delete</button>` : 'N/A'}</td>
+        <td>${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteRecord('${doc.id}')">Delete</button>` : 'N/A'}</td>
       </tr>`;
     });
-    body.innerHTML = html || "<tr><td colspan='2' class='no-data'>No records</td></tr>";
+    body.innerHTML = html || "<tr><td colspan='2'>No records</td></tr>";
   } catch(e) {
-    body.innerHTML = "<tr><td colspan='2' class='no-data'>Error loading data</td></tr>";
+    body.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
   }
 }
 
 async function deleteRecord(id) {
-  if(!confirm("Delete this record?")) return;
+  if(!confirm("Delete?")) return;
   try {
     await db.collection("buildings").doc(id).delete();
     const snap = await db.collection("buildings").get();
@@ -518,10 +397,7 @@ async function createAdmin() {
   if(pass.length < 6) return alert("Password must be at least 6 characters");
 
   try {
-    // Create user in Auth
     const userCred = await auth.createUserWithEmailAndPassword(email, pass);
-    
-    // Add to users collection
     await db.collection("users").doc(userCred.user.uid).set({ email, role });
     
     alert("Admin created successfully!");
@@ -543,29 +419,21 @@ async function loadAdmins() {
       html += `<tr>
         <td>${u.email}</td>
         <td>${u.role}</td>
-        <td>${currentUserRole === 'owner' ? `<button class="btn btn-danger action-btn" onclick="deleteAdmin('${doc.id}')">Remove</button>` : 'N/A'}</td>
+        <td>${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteAdmin('${doc.id}')">Remove</button>` : 'N/A'}</td>
       </tr>`;
     });
-    body.innerHTML = html || "<tr><td colspan='3' class='no-data'>No admins</td></tr>";
+    body.innerHTML = html || "<tr><td colspan='3'>No admins</td></tr>";
   } catch(e) {
-    body.innerHTML = "<tr><td colspan='3' class='no-data'>Error loading admins</td></tr>";
+    body.innerHTML = "<tr><td colspan='3'>Error loading admins</td></tr>";
   }
 }
 
 async function deleteAdmin(id) {
-  if(!confirm("Remove this admin?")) return;
+  if(!confirm("Remove?")) return;
   try {
     await db.collection("users").doc(id).delete();
     loadAdmins();
   } catch(e) { alert("Error: " + e.message); }
-}
-
-function showMsg(text, type, id) {
-  const el = document.getElementById(id);
-  el.textContent = text;
-  el.className = "message " + type;
-  el.classList.remove("hidden");
-  setTimeout(() => el.classList.add("hidden"), 4000);
 }
 </script>
 </body>
