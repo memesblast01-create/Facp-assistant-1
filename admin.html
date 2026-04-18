@@ -75,12 +75,14 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
   <div id="adminSection" class="hidden">
     <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; margin-bottom:20px">
       <h3>👥 Create New Admin</h3>
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:10px">Note: Owners can manage all data. Sub-admins can only add data.</p>
       <input id="newAdminEmail" placeholder="New Admin Email">
+      <input id="newAdminPass" type="password" placeholder="Admin Password">
       <select id="newAdminRole">
         <option value="subadmin">Sub-Admin (Add Only)</option>
         <option value="owner">Owner (Full Access)</option>
       </select>
-      <button onclick="createAdmin()">Add Admin to Database</button>
+      <button onclick="createAdmin()">Create Admin Account</button>
     </div>
 
     <h3>Existing Admins</h3>
@@ -105,7 +107,7 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
-let currentUserRole = 'owner'; // Default to owner for UI, will be checked
+let currentUserRole = 'owner';
 
 try {
   firebase.initializeApp(firebaseConfig);
@@ -120,18 +122,14 @@ async function login() {
 
   try {
     const userCred = await auth.signInWithEmailAndPassword(e, p);
-    
-    // Try to get role, but don't block if permissions are missing
     try {
       const userDoc = await db.collection("users").where("email", "==", e).get();
       if(!userDoc.empty) {
         currentUserRole = userDoc.docs[0].data().role;
       }
     } catch(err) {
-      console.log("Role check failed, assuming Owner for first setup");
       currentUserRole = 'owner';
     }
-    
     showAdmin(e);
   } catch(err) { 
     alert("Login Failed: " + err.message); 
@@ -191,11 +189,17 @@ async function upload() {
         batch.set(ref, row);
       });
       await batch.commit();
-      localStorage.setItem("facp_data", JSON.stringify(rows));
+      
+      // Force refresh local data
+      const snap = await db.collection("buildings").get();
+      const fireData = [];
+      snap.forEach(doc => fireData.push(doc.data()));
+      localStorage.setItem("facp_data", JSON.stringify(fireData));
+      
       alert("Uploaded " + rows.length + " records!");
       loadTable();
     } catch(err) { 
-      alert("Permission Error: Please update your Firebase Security Rules as instructed."); 
+      alert("Permission Error: Please update your Firebase Security Rules."); 
     }
   };
   if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
@@ -214,7 +218,7 @@ async function loadTable() {
     });
     body.innerHTML = html || "<tr><td colspan='2'>No records.</td></tr>";
   } catch(e) {
-    body.innerHTML = "<tr><td colspan='2'>Permission Error: Update Firebase Rules.</td></tr>";
+    body.innerHTML = "<tr><td colspan='2'>Permission Error.</td></tr>";
   }
 }
 
@@ -222,6 +226,13 @@ async function deleteRecord(id) {
   if(confirm("Delete?")) { 
     try {
       await db.collection("buildings").doc(id).delete(); 
+      
+      // Force refresh local data after delete
+      const snap = await db.collection("buildings").get();
+      const fireData = [];
+      snap.forEach(doc => fireData.push(doc.data()));
+      localStorage.setItem("facp_data", JSON.stringify(fireData));
+      
       loadTable(); 
     } catch(e) { alert("Permission Denied"); }
   }
@@ -244,14 +255,31 @@ async function clearData() {
 async function createAdmin() {
   if(currentUserRole !== 'owner') return alert("Only Owners can add admins");
   const email = document.getElementById("newAdminEmail").value;
+  const pass = document.getElementById("newAdminPass").value;
   const role = document.getElementById("newAdminRole").value;
-  if(!email) return alert("Enter email");
+  
+  if(!email || !pass) return alert("Enter email and password");
+  if(pass.length < 6) return alert("Password must be at least 6 characters");
 
   try {
+    // 1. Create user in Firebase Auth
+    // Note: This will log out the current user if not handled carefully.
+    // In a production app, you'd use a Cloud Function.
+    // For now, we'll use a secondary app instance to create the user.
+    const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+    await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    await secondaryApp.delete();
+
+    // 2. Add role to Firestore
     await db.collection("users").add({ email, role });
-    alert("Admin added to database!");
+    
+    alert("Admin account created successfully!");
+    document.getElementById("newAdminEmail").value = "";
+    document.getElementById("newAdminPass").value = "";
     loadAdmins();
-  } catch(e) { alert("Permission Error: Update Firebase Rules."); }
+  } catch(e) { 
+    alert("Error: " + e.message); 
+  }
 }
 
 async function loadAdmins() {
