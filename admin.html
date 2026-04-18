@@ -397,7 +397,10 @@ async function createAdmin() {
   if(pass.length < 6) return alert("Password must be at least 6 characters");
 
   try {
-    const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+    const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+    const userCred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    await secondaryApp.delete();
+
     await db.collection("users").doc(userCred.user.uid).set({ email, role });
     
     alert("Admin created successfully!");
