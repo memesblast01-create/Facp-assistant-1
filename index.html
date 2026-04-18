@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FACP Assistant - Building Search System</title>
+<title>FACP Assistant</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -11,121 +11,242 @@
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; width: 100%; }
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url("background.jpg");
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center;
-  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 20px;
+  padding: 16px;
+  color: #fff;
 }
-.main-container {
+
+.container {
   width: 100%;
-  max-width: 700px;
-  backdrop-filter: blur(15px);
-  background: rgba(0, 0, 0, 0.85);
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 600px;
 }
-.header { text-align: center; margin-bottom: 30px; }
-.header h1 {
-  font-size: 2.5em;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #25D366, #128C7E);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
+.header {
+  text-align: center;
+  margin-bottom: 50px;
 }
-.header p { color: #aaa; font-size: 0.95em; }
-.search-container { display: flex; gap: 10px; margin-bottom: 20px; }
-.search-container input {
-  flex: 1;
-  padding: 15px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.1em;
-  background: white;
-  color: #333;
+
+.title {
+  font-size: clamp(28px, 8vw, 48px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
-.search-container button {
-  padding: 15px 30px;
-  background: #25D366;
-  color: black;
-  border: none;
-  border-radius: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 1em;
+
+.subtitle {
+  font-size: clamp(13px, 4vw, 16px);
+  font-weight: 400;
+  opacity: 0.9;
+  letter-spacing: 0.5px;
 }
-.admin-btn {
-  display: block;
-  margin: 20px auto 0;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #aaa;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9em;
-}
-.results-container { margin-top: 30px; max-height: 500px; overflow-y: auto; padding-right: 5px; }
-.result-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 5px solid #25D366;
+
+.search-box {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
   padding: 20px;
-  margin-bottom: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  margin-bottom: 30px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: clamp(14px, 4vw, 16px);
+  color: #333;
+  outline: none;
+  font-weight: 500;
+}
+
+.search-input::placeholder {
+  color: #999;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: clamp(13px, 3vw, 15px);
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.search-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.search-btn:active {
+  transform: translateY(0);
+}
+
+.admin-link {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.admin-link a {
+  color: white;
+  text-decoration: none;
+  font-size: clamp(12px, 3vw, 14px);
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.admin-link a:hover {
+  opacity: 1;
+}
+
+.results {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-top: 20px;
+}
+
+.result-item {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-item:hover {
+  background: #f9f9f9;
   border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
-.code-line {
-  font-size: 1.3em;
-  font-weight: 900;
-  color: #25D366;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 5px;
+
+.result-code {
+  font-size: clamp(16px, 4vw, 20px);
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 8px;
 }
-.detail-row { margin-bottom: 6px; font-size: 1.05em; }
-.detail-label { color: #aaa; font-weight: 500; margin-right: 8px; }
-.detail-value { color: #fff; font-weight: 700; }
-.no-results { text-align: center; color: #aaa; padding: 20px; }
-.status-badge {
-  font-size: 0.7em;
-  padding: 4px 10px;
-  border-radius: 20px;
-  margin-left: 10px;
-  vertical-align: middle;
-  font-weight: bold;
+
+.result-detail {
+  font-size: clamp(13px, 3vw, 14px);
+  color: #555;
+  margin-bottom: 4px;
+  line-height: 1.5;
 }
-.status-online { background: #25D366; color: black; }
+
+.result-detail strong {
+  color: #333;
+  font-weight: 600;
+}
+
+.no-results {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+  font-size: clamp(13px, 3vw, 15px);
+}
+
 /* Scrollbar */
-.results-container::-webkit-scrollbar { width: 6px; }
-.results-container::-webkit-scrollbar-thumb { background: #25D366; border-radius: 10px; }
+.results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.results::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.results::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 10px;
+}
+
+.results::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
+
+  .header {
+    margin-bottom: 40px;
+  }
+
+  .search-box {
+    padding: 16px;
+  }
+
+  .search-input-wrapper {
+    gap: 8px;
+  }
+
+  .results {
+    max-height: 50vh;
+    padding: 16px;
+  }
+
+  .result-item {
+    padding: 12px;
+  }
+}
 </style>
 </head>
 <body>
 
-<div class="main-container">
+<div class="container">
   <div class="header">
-    <h1>🏢 FACP Assistant <span id="statusBadge" class="status-badge status-online">Ready</span></h1>
-    <p>Building Search System</p>
+    <div class="title">FACP</div>
+    <div class="subtitle">Building Directory</div>
   </div>
 
-  <div class="search-container">
-    <input id="searchInput" type="text" placeholder="Search code, name, or area...">
-    <button onclick="performSearch()">SEARCH</button>
+  <div class="search-box">
+    <div class="search-input-wrapper">
+      <input 
+        id="searchInput" 
+        class="search-input" 
+        type="text" 
+        placeholder="Search buildings..."
+        autocomplete="off"
+      >
+      <button class="search-btn" onclick="performSearch()">Search</button>
+    </div>
   </div>
 
-  <button class="admin-btn" onclick="location.href='admin.html'">Admin Panel</button>
+  <div class="admin-link">
+    <a href="admin.html">Admin Panel →</a>
+  </div>
 
-  <div class="results-container" id="resultsContainer">
-    <div class="no-results">Type something to search...</div>
+  <div class="results" id="resultsContainer">
+    <div class="no-results">Start typing to search...</div>
   </div>
 </div>
 
@@ -142,22 +263,16 @@ const firebaseConfig = {
 let buildingsData = [];
 
 window.onload = async () => {
-  // Sync with Firebase (Source of Truth)
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const snap = await db.collection("buildings").get();
     const fireData = [];
     snap.forEach(doc => fireData.push(doc.data()));
-    
-    // Update local data with fresh cloud data
     buildingsData = fireData;
     localStorage.setItem("facp_data", JSON.stringify(fireData));
-    document.getElementById("statusBadge").textContent = "Cloud Synced";
   } catch (e) { 
-    console.log("Offline mode, using local data");
     buildingsData = JSON.parse(localStorage.getItem("facp_data") || "[]");
-    document.getElementById("statusBadge").textContent = "Local Mode";
   }
 };
 
@@ -166,7 +281,7 @@ function performSearch() {
   const container = document.getElementById("resultsContainer");
   
   if (!q) {
-    container.innerHTML = '<div class="no-results">Type something to search...</div>';
+    container.innerHTML = '<div class="no-results">Start typing to search...</div>';
     return;
   }
 
@@ -175,7 +290,7 @@ function performSearch() {
   );
 
   if (results.length === 0) {
-    container.innerHTML = '<div class="no-results">No results found for "' + q + '"</div>';
+    container.innerHTML = '<div class="no-results">No results found</div>';
     return;
   }
 
@@ -192,24 +307,21 @@ function performSearch() {
       if (key === codeKey || isInternal || isTimestamp || !value || String(value).trim() === "") return;
       
       const label = key.replace(/_/g, ' ');
-      detailsHtml += `
-        <div class="detail-row">
-          <span class="detail-label">${label}:</span>
-          <span class="detail-value">${value}</span>
-        </div>
-      `;
+      detailsHtml += `<div class="result-detail"><strong>${label}:</strong> ${value}</div>`;
     });
 
     return `
-      <div class="result-card">
-        <div class="code-line">${codeValue}</div>
+      <div class="result-item">
+        <div class="result-code">${codeValue}</div>
         ${detailsHtml}
       </div>
     `;
   }).join("");
 }
 
-document.getElementById("searchInput").onkeypress = (e) => { if(e.key === "Enter") performSearch(); };
+document.getElementById("searchInput").addEventListener("keypress", (e) => {
+  if(e.key === "Enter") performSearch();
+});
 </script>
 </body>
 </html>
