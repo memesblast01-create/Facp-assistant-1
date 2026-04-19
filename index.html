@@ -151,31 +151,48 @@ button:hover {
 
   .footer {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 5px;
     z-index: 1000;
+    pointer-events: none;
+  }
+
+  .footer-content {
+    background: rgba(37, 211, 102, 0.2);
+    backdrop-filter: blur(5px);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(37, 211, 102, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    pointer-events: auto;
   }
 
   .footer p {
     margin: 0;
-    font-size: 0.8em;
-    color: #aaa;
+    font-size: 1em;
+    font-weight: bold;
+    color: #25D366;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .whatsapp-btn {
     background: #25D366;
     color: white;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px;
+    font-size: 20px;
     text-decoration: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     transition: transform 0.3s;
@@ -238,10 +255,12 @@ button:hover {
 </div>
 
 <div class="footer">
-  <p>Made by Arslan</p>
-  <a href="https://wa.me/971565657738" target="_blank" class="whatsapp-btn">
-    <i class="fab fa-whatsapp"></i>
-  </a>
+  <div class="footer-content">
+    <p>Made by Arslan</p>
+    <a href="https://wa.me/971565657738" target="_blank" class="whatsapp-btn">
+      <i class="fab fa-whatsapp"></i>
+    </a>
+  </div>
 </div>
 
 <script>
