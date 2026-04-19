@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FACP Assistant - Building Search System</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -130,26 +131,95 @@ button:hover {
   padding: 20px;
 }
 
-@media (max-width: 600px) {
-  .container {
-    padding: 20px;
+  @media (max-width: 600px) {
+    .container {
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.8em;
+    }
+
+    .search-box {
+      flex-direction: column;
+    }
+
+    button {
+      width: 100%;
+    }
   }
 
-  h1 {
-    font-size: 1.8em;
-  }
-
-  .search-box {
+  .footer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    z-index: 1000;
   }
 
-  button {
-    width: 100%;
+  .footer p {
+    margin: 0;
+    font-size: 0.8em;
+    color: #aaa;
   }
-}
-</style>
+
+  .whatsapp-btn {
+    background: #25D366;
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s;
+  }
+
+  .whatsapp-btn:hover {
+    transform: scale(1.1);
+  }
+
+  .news-ticker {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(37, 211, 102, 0.9);
+    color: black;
+    padding: 10px 0;
+    z-index: 1001;
+    overflow: hidden;
+    white-space: nowrap;
+    font-weight: bold;
+  }
+
+  .ticker-content {
+    display: inline-block;
+    padding-left: 100%;
+    animation: ticker 20s linear infinite;
+  }
+
+  @keyframes ticker {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-100%, 0); }
+  }
+
+  body {
+    padding-top: 60px;
+  }
+  </style>
 </head>
 <body>
+
+<div class="news-ticker" id="newsTicker">
+  <div class="ticker-content" id="tickerContent">Loading news...</div>
+</div>
 
 <div class="container">
   <h1>FACP SEARCH SYSTEM</h1>
@@ -165,6 +235,13 @@ button:hover {
   <div class="results" id="resultsContainer">
     <div class="no-results">Type something to search...</div>
   </div>
+</div>
+
+<div class="footer">
+  <p>Made by Arslan</p>
+  <a href="https://wa.me/971565657738" target="_blank" class="whatsapp-btn">
+    <i class="fab fa-whatsapp"></i>
+  </a>
 </div>
 
 <script>
@@ -183,6 +260,14 @@ window.onload = async () => {
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    
+    // Load News
+    db.collection("settings").doc("news").onSnapshot(doc => {
+      if (doc.exists) {
+        document.getElementById("tickerContent").textContent = doc.data().text || "Welcome to FACP Assistant";
+      }
+    });
+
     const snap = await db.collection("buildings").get();
     const fireData = [];
     snap.forEach(doc => fireData.push(doc.data()));
@@ -202,9 +287,21 @@ function performSearch() {
     return;
   }
 
-  const results = buildingsData.filter(item => 
-    Object.values(item).some(val => String(val || "").toLowerCase().includes(q))
-  );
+  // Prioritize exact code matches
+  const exactMatches = buildingsData.filter(item => {
+    const codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code'));
+    return codeKey && String(item[codeKey] || "").toLowerCase() === q;
+  });
+
+  // Then partial matches
+  const partialMatches = buildingsData.filter(item => {
+    const codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code'));
+    const isExact = codeKey && String(item[codeKey] || "").toLowerCase() === q;
+    if (isExact) return false;
+    return Object.values(item).some(val => String(val || "").toLowerCase().includes(q));
+  });
+
+  const results = [...exactMatches, ...partialMatches];
 
   if (results.length === 0) {
     container.innerHTML = '<div class="no-results">No results found</div>';
