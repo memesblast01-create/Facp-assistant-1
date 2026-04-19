@@ -189,6 +189,7 @@ th {
 
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('data', this)">Data Management</button>
+        <button class="tab-btn" onclick="switchTab('news', this)">News Section</button>
         <button class="tab-btn" id="adminTabBtn" onclick="switchTab('admins', this)">Manage Admins</button>
       </div>
 
@@ -198,8 +199,13 @@ th {
         <input type="file" id="fileInput" accept=".csv,.xlsx">
         <button onclick="upload()">Upload File</button>
 
-        <div style="margin-top: 20px;">
-          <button onclick="loadTable()" style="width:auto; padding:8px 15px">Refresh</button>
+        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+          <input id="adminSearchInput" placeholder="Search data..." style="margin-top: 0; flex: 1;">
+          <button onclick="loadTable()" style="width:auto; padding:12px 20px; margin-top: 0;">Search</button>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <button onclick="document.getElementById('adminSearchInput').value=''; loadTable()" style="width:auto; padding:8px 15px">Refresh</button>
           <button onclick="clearData()" class="danger" id="clearBtn" style="width:auto; padding:8px 15px; margin-left:10px">Clear All</button>
         </div>
 
@@ -207,6 +213,13 @@ th {
           <thead><tr><th>Details</th><th>Action</th></tr></thead>
           <tbody id="dataBody"></tbody>
         </table>
+      </div>
+
+      <!-- NEWS TAB -->
+      <div id="newsTab" class="tab-content">
+        <h3>Manage News Ticker</h3>
+        <textarea id="newsText" style="width:100%; height:100px; background:#1a1a1a; color:white; border:1px solid #333; border-radius:8px; padding:10px; margin-top:10px;" placeholder="Enter news text here..."></textarea>
+        <button onclick="updateNews()" style="margin-top:10px;">Update News</button>
       </div>
 
       <!-- ADMINS TAB -->
@@ -285,6 +298,7 @@ function showAdmin(email) {
   
   loadTable();
   loadAdmins();
+  loadNews();
 }
 
 function logout() {
@@ -345,21 +359,66 @@ async function upload() {
 
 async function loadTable() {
   const body = document.getElementById("dataBody");
+  const searchQ = document.getElementById("adminSearchInput").value.toLowerCase().trim();
   try {
-    const snap = await db.collection("buildings").limit(50).get();
+    let query = db.collection("buildings");
+    const snap = await query.get();
     let html = "";
+    let count = 0;
+    
     snap.forEach(doc => {
       const item = doc.data();
-      const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(" | ");
-      html += `<tr>
-        <td>${details}</td>
-        <td>${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteRecord('${doc.id}')">Delete</button>` : 'N/A'}</td>
-      </tr>`;
+      const matches = !searchQ || Object.values(item).some(val => String(val || "").toLowerCase().includes(searchQ));
+      
+      if (matches && count < 100) {
+        const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(" | ");
+        html += `<tr>
+          <td>${details}</td>
+          <td>
+            <div style="display:flex; gap:5px;">
+              <button onclick="editRecord('${doc.id}', ${JSON.stringify(item).replace(/"/g, '&quot;')})" style="width:auto; padding:6px 12px; background:#2196F3; color:white;">Edit</button>
+              ${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteRecord('${doc.id}')" style="width:auto; padding:6px 12px;">Delete</button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+        count++;
+      }
     });
-    body.innerHTML = html || "<tr><td colspan='2'>No records</td></tr>";
+    body.innerHTML = html || "<tr><td colspan='2'>No records found</td></tr>";
   } catch(e) {
+    console.error(e);
     body.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
   }
+}
+
+async function editRecord(id, currentData) {
+  const newDataStr = prompt("Edit record (JSON format):", JSON.stringify(currentData));
+  if (!newDataStr) return;
+  try {
+    const newData = JSON.parse(newDataStr);
+    await db.collection("buildings").doc(id).update(newData);
+    alert("Updated successfully!");
+    loadTable();
+  } catch(e) {
+    alert("Invalid JSON or Update Error: " + e.message);
+  }
+}
+
+async function loadNews() {
+  try {
+    const doc = await db.collection("settings").doc("news").get();
+    if (doc.exists) {
+      document.getElementById("newsText").value = doc.data().text || "";
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function updateNews() {
+  const text = document.getElementById("newsText").value.trim();
+  try {
+    await db.collection("settings").doc("news").set({ text });
+    alert("News updated!");
+  } catch(e) { alert("Error: " + e.message); }
 }
 
 async function deleteRecord(id) {
