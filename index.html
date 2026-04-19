@@ -49,11 +49,40 @@ p {
   font-size: 0.95em;
 }
 
-.search-box {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
+  .search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .filters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #25D366;
+    border: 1px solid #25D366;
+    border-radius: 20px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: auto;
+  }
+
+  .filter-btn.active {
+    background: #25D366;
+    color: black;
+  }
+
+  .filter-btn:hover {
+    background: rgba(37, 211, 102, 0.2);
+  }
 
 input {
   flex: 1;
@@ -247,6 +276,12 @@ button:hover {
     <button onclick="performSearch()">SEARCH</button>
   </div>
 
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All Results</button>
+    <button class="filter-btn" onclick="setFilter('exact', this)">Exact Code</button>
+    <button class="filter-btn" onclick="setFilter('partial', this)">Partial Match</button>
+  </div>
+
   <button class="admin-btn" onclick="location.href='admin.html'">Admin Panel</button>
 
   <div class="results" id="resultsContainer">
@@ -274,6 +309,14 @@ const firebaseConfig = {
 };
 
 let buildingsData = [];
+let currentFilter = 'all';
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  performSearch();
+}
 
 window.onload = async () => {
   try {
@@ -320,7 +363,14 @@ function performSearch() {
     return Object.values(item).some(val => String(val || "").toLowerCase().includes(q));
   });
 
-  const results = [...exactMatches, ...partialMatches];
+  let results = [];
+  if (currentFilter === 'exact') {
+    results = exactMatches;
+  } else if (currentFilter === 'partial') {
+    results = partialMatches;
+  } else {
+    results = [...exactMatches, ...partialMatches];
+  }
 
   if (results.length === 0) {
     container.innerHTML = '<div class="no-results">No results found</div>';
