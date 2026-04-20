@@ -378,15 +378,13 @@ function performSearch() {
   }
 
   container.innerHTML = results.map(item => {
-    // Display EVERY field exactly as it exists in the object, no filtering at all
-    const singleLineText = Object.values(item)
-      .map(val => String(val || "").trim())
-      .filter(val => val !== "")
-      .join(" ");
+    const values = Object.values(item)
+      .map(v => String(v || "").trim())
+      .filter(v => v !== "");
 
     return `
-      <div class="result-card" style="text-align: center; border-left: none; border-bottom: 2px solid #25D366;">
-        <div class="result-code" style="font-size: 1.1em; color: white; font-weight: bold;">${singleLineText}</div>
+      <div class="result-card" style="text-align:center; border-left:none; border-bottom:2px solid #25D366; padding:12px;">
+        <div style="color:white; font-size:1em; font-weight:500;">${values.join(" - ")}</div>
       </div>
     `;
   }).join("");
