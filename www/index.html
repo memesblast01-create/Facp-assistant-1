@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FACP Assistant - Building Search System</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("background.jpg");
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  width: 90%;
+  max-width: 600px;
+  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  color: #25D366;
+}
+
+p {
+  color: #aaa;
+  margin-bottom: 30px;
+  font-size: 0.95em;
+}
+
+  .search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .filters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #25D366;
+    border: 1px solid #25D366;
+    border-radius: 20px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: auto;
+  }
+
+  .filter-btn.active {
+    background: #25D366;
+    color: black;
+  }
+
+  .filter-btn:hover {
+    background: rgba(37, 211, 102, 0.2);
+  }
+
+input {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1em;
+  background: white;
+  color: #333;
+}
+
+button {
+  padding: 15px 30px;
+  background: #25D366;
+  color: black;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.admin-btn {
+  display: block;
+  margin: 20px auto 0;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  width: auto;
+}
+
+.admin-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.results {
+  margin-top: 30px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.result-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid #25D366;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.result-code {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #25D366;
+  margin-bottom: 8px;
+}
+
+.result-detail {
+  color: #ddd;
+  font-size: 0.95em;
+  margin-bottom: 4px;
+}
+
+.no-results {
+  text-align: center;
+  color: #aaa;
+  padding: 20px;
+}
+
+  @media (max-width: 600px) {
+    .container {
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.8em;
+    }
+
+    .search-box {
+      flex-direction: column;
+    }
+
+    button {
+      width: 100%;
+    }
+  }
+
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .footer-content {
+    background: rgba(37, 211, 102, 0.2);
+    backdrop-filter: blur(5px);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(37, 211, 102, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    pointer-events: auto;
+  }
+
+  .footer p {
+    margin: 0;
+    font-size: 1em;
+    font-weight: bold;
+    color: #25D366;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .whatsapp-btn {
+    background: #25D366;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s;
+  }
+
+  .whatsapp-btn:hover {
+    transform: scale(1.1);
+  }
+
+  .news-ticker {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(37, 211, 102, 0.9);
+    color: black;
+    padding: 10px 0;
+    z-index: 1001;
+    overflow: hidden;
+    white-space: nowrap;
+    font-weight: bold;
+  }
+
+  .ticker-content {
+    display: inline-block;
+    padding-left: 100%;
+    animation: ticker 20s linear infinite;
+  }
+
+  @keyframes ticker {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-100%, 0); }
+  }
+
+  body {
+    padding-top: 60px;
+  }
+  </style>
+</head>
+<body>
+
+<div class="news-ticker" id="newsTicker">
+  <div class="ticker-content" id="tickerContent">Loading news...</div>
+</div>
+
+<div class="container">
+  <h1>FACP SEARCH SYSTEM</h1>
+  <p>Building Information Database</p>
+
+  <div class="search-box">
+    <input id="searchInput" type="text" placeholder="Search anything...">
+    <button onclick="performSearch()">SEARCH</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All Results</button>
+    <button class="filter-btn" onclick="setFilter('exact', this)">Exact Code</button>
+    <button class="filter-btn" onclick="setFilter('partial', this)">Partial Match</button>
+  </div>
+
+  <button class="admin-btn" onclick="location.href='admin.html'">Admin Panel</button>
+
+  <div class="results" id="resultsContainer">
+    <div class="no-results">Type something to search...</div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-content">
+    <p>Made by Arslan</p>
+    <a href="https://wa.me/971565657738" target="_blank" class="whatsapp-btn">
+      <i class="fab fa-whatsapp"></i>
+    </a>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain: "facp-assistant.firebaseapp.com",
+  projectId: "facp-assistant",
+  storageBucket: "facp-assistant.firebasestorage.app",
+  messagingSenderId: "771947694967",
+  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
+};
+
+let buildingsData = [];
+let currentFilter = 'all';
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  performSearch();
+}
+
+window.onload = async () => {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    // Load News
+    db.collection("settings").doc("news").onSnapshot(doc => {
+      if (doc.exists) {
+        document.getElementById("tickerContent").textContent = doc.data().text || "Welcome to FACP Assistant";
+      }
+    });
+
+    const snap = await db.collection("buildings").get();
+    const fireData = [];
+    snap.forEach(doc => fireData.push(doc.data()));
+    buildingsData = fireData;
+    localStorage.setItem("facp_data", JSON.stringify(fireData));
+  } catch (e) { 
+    buildingsData = JSON.parse(localStorage.getItem("facp_data") || "[]");
+  }
+};
+
+function performSearch() {
+  const q = document.getElementById("searchInput").value.toLowerCase().trim();
+  const container = document.getElementById("resultsContainer");
+  
+  if (!q) {
+    container.innerHTML = '<div class="no-results">Type something to search...</div>';
+    return;
+  }
+
+  // Prioritize exact code matches
+  const exactMatches = buildingsData.filter(item => {
+    const codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code'));
+    return codeKey && String(item[codeKey] || "").toLowerCase() === q;
+  });
+
+  // Then partial matches
+  const partialMatches = buildingsData.filter(item => {
+    const codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code'));
+    const isExact = codeKey && String(item[codeKey] || "").toLowerCase() === q;
+    if (isExact) return false;
+    return Object.values(item).some(val => String(val || "").toLowerCase().includes(q));
+  });
+
+  let results = [];
+  if (currentFilter === 'exact') {
+    results = exactMatches;
+  } else if (currentFilter === 'partial') {
+    results = partialMatches;
+  } else {
+    results = [...exactMatches, ...partialMatches];
+  }
+
+  if (results.length === 0) {
+    container.innerHTML = '<div class="no-results">No results found</div>';
+    return;
+  }
+
+  container.innerHTML = results.map(item => {
+    let codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code')) || Object.keys(item)[0];
+    let codeValue = item[codeKey] || "N/A";
+
+    let detailsHtml = "";
+    Object.entries(item).forEach(([key, value]) => {
+      const lowKey = key.toLowerCase();
+      const isInternal = lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || lowKey.includes('time') || lowKey.includes('date');
+      const isTimestamp = /^\d{10,15}$/.test(String(value));
+      
+      if (key === codeKey || isInternal || isTimestamp || !value || String(value).trim() === "") return;
+      
+      const label = key.replace(/_/g, ' ');
+      detailsHtml += `<div class="result-detail"><strong>${label}:</strong> ${value}</div>`;
+    });
+
+    return `
+      <div class="result-card">
+        <div class="result-code">${codeValue}</div>
+        ${detailsHtml}
+      </div>
+    `;
+  }).join("");
+}
+
+document.getElementById("searchInput").addEventListener("keypress", (e) => {
+  if(e.key === "Enter") performSearch();
+});
+</script>
+</body>
+</html>

@@ -378,25 +378,23 @@ function performSearch() {
   }
 
   container.innerHTML = results.map(item => {
-    let codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code')) || Object.keys(item)[0];
-    let codeValue = item[codeKey] || "N/A";
-
-    let detailsHtml = "";
+    // Collect all non-internal values to display in one line
+    const displayValues = [];
     Object.entries(item).forEach(([key, value]) => {
       const lowKey = key.toLowerCase();
       const isInternal = lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || lowKey.includes('time') || lowKey.includes('date');
       const isTimestamp = /^\d{10,15}$/.test(String(value));
       
-      if (key === codeKey || isInternal || isTimestamp || !value || String(value).trim() === "") return;
+      if (isInternal || isTimestamp || !value || String(value).trim() === "") return;
       
-      const label = key.replace(/_/g, ' ');
-      detailsHtml += `<div class="result-detail"><strong>${label}:</strong> ${value}</div>`;
+      displayValues.push(String(value).trim());
     });
 
+    const singleLineText = displayValues.join(" ");
+
     return `
-      <div class="result-card">
-        <div class="result-code">${codeValue}</div>
-        ${detailsHtml}
+      <div class="result-card" style="text-align: center; border-left: none; border-bottom: 2px solid #25D366;">
+        <div class="result-code" style="font-size: 1.1em; color: white; font-weight: bold;">${singleLineText}</div>
       </div>
     `;
   }).join("");

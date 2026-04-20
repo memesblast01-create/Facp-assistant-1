@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FACP Admin Panel</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("background.jpg");
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  color: white;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.footer-content {
+  background: rgba(37, 211, 102, 0.2);
+  backdrop-filter: blur(5px);
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(37, 211, 102, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  pointer-events: auto;
+}
+
+.footer p {
+  margin: 0;
+  font-size: 1em;
+  font-weight: bold;
+  color: #25D366;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.whatsapp-btn {
+  background: #25D366;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s;
+}
+
+.whatsapp-btn:hover {
+  transform: scale(1.1);
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.box {
+  width: 90%;
+  max-width: 500px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 30px;
+  border-radius: 15px;
+  border: 1px solid #25D366;
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: #25D366;
+}
+
+input, button, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: white;
+  font-size: 1em;
+}
+
+button {
+  background: #25D366;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.hidden { display: none; }
+
+.dashboard {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.tab-btn {
+  background: transparent;
+  color: #aaa;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+  color: #25D366;
+  border-bottom-color: #25D366;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 12px;
+  border: 1px solid #333;
+  text-align: left;
+}
+
+th {
+  background: rgba(37, 211, 102, 0.1);
+  color: #25D366;
+}
+
+.danger {
+  background: #ff4336;
+  color: white;
+  padding: 6px 12px;
+  width: auto;
+}
+
+.danger:hover {
+  background: #ff1744;
+}
+
+.logout-btn {
+  background: #444;
+  color: white;
+  padding: 10px 20px;
+  width: auto;
+}
+
+@media (max-width: 600px) {
+  .box {
+    max-width: 100%;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  table {
+    font-size: 0.9em;
+  }
+
+  th, td {
+    padding: 8px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN VIEW -->
+<div id="loginView" class="center">
+  <div class="box">
+    <h2>Admin Login</h2>
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">LOGIN</button>
+    <button onclick="location.href='index.html'" style="background:none; color:#aaa; margin-top:10px">Back to Search</button>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="adminView" class="hidden">
+  <div class="dashboard">
+    <div class="box">
+      <div class="header">
+        <div>
+          <h2>Admin Dashboard</h2>
+          <p id="userInfo" style="color:#aaa; font-size:0.9em; margin-top:5px;"></p>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('data', this)">Data Management</button>
+        <button class="tab-btn" onclick="switchTab('news', this)">News Section</button>
+        <button class="tab-btn" id="adminTabBtn" onclick="switchTab('admins', this)">Manage Admins</button>
+      </div>
+
+      <!-- DATA TAB -->
+      <div id="dataTab" class="tab-content active">
+        <h3>Upload Data</h3>
+        <input type="file" id="fileInput" accept=".csv,.xlsx">
+        <button onclick="upload()">Upload File</button>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+          <input id="adminSearchInput" placeholder="Search data..." style="margin-top: 0; flex: 1;">
+          <button onclick="loadTable()" style="width:auto; padding:12px 20px; margin-top: 0;">Search</button>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <button onclick="document.getElementById('adminSearchInput').value=''; loadTable()" style="width:auto; padding:8px 15px">Refresh</button>
+          <button onclick="clearData()" class="danger" id="clearBtn" style="width:auto; padding:8px 15px; margin-left:10px">Clear All</button>
+        </div>
+
+        <table>
+          <thead><tr><th>Details</th><th>Action</th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+
+      <!-- NEWS TAB -->
+      <div id="newsTab" class="tab-content">
+        <h3>Manage News Ticker</h3>
+        <textarea id="newsText" style="width:100%; height:100px; background:#1a1a1a; color:white; border:1px solid #333; border-radius:8px; padding:10px; margin-top:10px;" placeholder="Enter news text here..."></textarea>
+        <button onclick="updateNews()" style="margin-top:10px;">Update News</button>
+      </div>
+
+      <!-- ADMINS TAB -->
+      <div id="adminsTab" class="tab-content">
+        <h3>Create New Admin</h3>
+        <input id="newAdminEmail" type="email" placeholder="Email">
+        <input id="newAdminPass" type="password" placeholder="Password">
+        <select id="newAdminRole">
+          <option value="subadmin">Sub-Admin (Add Only)</option>
+          <option value="owner">Owner (Full Access)</option>
+        </select>
+        <button onclick="createAdmin()">Create Admin</button>
+
+        <h3 style="margin-top: 30px;">Existing Admins</h3>
+        <table>
+          <thead><tr><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+          <tbody id="adminsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-content">
+    <p>Made by Arslan</p>
+    <a href="https://wa.me/971565657738" target="_blank" class="whatsapp-btn">
+      <i class="fab fa-whatsapp"></i>
+    </a>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain: "facp-assistant.firebaseapp.com",
+  projectId: "facp-assistant",
+  storageBucket: "facp-assistant.firebasestorage.app",
+  messagingSenderId: "771947694967",
+  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
+};
+
+let db, auth;
+let currentUserRole = 'owner';
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  auth = firebase.auth();
+} catch(e) { console.error(e); }
+
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const pass = document.getElementById("pass").value.trim();
+  
+  if(!email || !pass) return alert("Enter email and password");
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    
+    try {
+      const userDoc = await db.collection("users").where("email", "==", email).get();
+      if(!userDoc.empty) {
+        currentUserRole = userDoc.docs[0].data().role;
+      }
+    } catch(e) {
+      currentUserRole = 'owner';
+    }
+    
+    showAdmin(email);
+  } catch(err) { 
+    alert("Login Failed: " + err.message);
+  }
+}
+
+function showAdmin(email) {
+  document.getElementById("loginView").classList.add("hidden");
+  document.getElementById("adminView").classList.remove("hidden");
+  document.getElementById("userInfo").textContent = "Logged in as: " + email + " (" + currentUserRole.toUpperCase() + ")";
+  
+  if(currentUserRole === 'subadmin') {
+    document.getElementById("adminTabBtn").classList.add("hidden");
+    document.getElementById("clearBtn").classList.add("hidden");
+  }
+  
+  loadTable();
+  loadAdmins();
+  loadNews();
+}
+
+function logout() {
+  auth.signOut().then(() => location.reload());
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+  
+  document.getElementById(tab + "Tab").classList.add("active");
+  btn.classList.add("active");
+}
+
+async function upload() {
+  const file = document.getElementById("fileInput").files[0];
+  if(!file) return alert("Select a file");
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    let rows = [];
+    try {
+      if(file.name.endsWith("xlsx")) {
+        const wb = XLSX.read(e.target.result, {type:"binary"});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      } else {
+        const lines = e.target.result.split("\n");
+        const headers = lines[0].split(",").map(h => h.trim());
+        for(let i=1; i<lines.length; i++) {
+          if(!lines[i].trim()) continue;
+          const values = lines[i].split(",").map(v => v.trim());
+          const obj = {};
+          headers.forEach((h, idx) => obj[h || "Field_"+idx] = values[idx] || "");
+          rows.push(obj);
+        }
+      }
+
+      const batch = db.batch();
+      rows.forEach(row => {
+        batch.set(db.collection("buildings").doc(), row);
+      });
+      await batch.commit();
+      
+      const snap = await db.collection("buildings").get();
+      const fireData = [];
+      snap.forEach(doc => fireData.push(doc.data()));
+      localStorage.setItem("facp_data", JSON.stringify(fireData));
+      
+      alert("Uploaded " + rows.length + " records!");
+      loadTable();
+    } catch(err) { 
+      alert("Error: " + err.message); 
+    }
+  };
+  if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
+  else reader.readAsText(file);
+}
+
+async function loadTable() {
+  const body = document.getElementById("dataBody");
+  const searchQ = document.getElementById("adminSearchInput").value.toLowerCase().trim();
+  try {
+    let query = db.collection("buildings");
+    const snap = await query.get();
+    let html = "";
+    let count = 0;
+    
+    snap.forEach(doc => {
+      const item = doc.data();
+      const matches = !searchQ || Object.values(item).some(val => String(val || "").toLowerCase().includes(searchQ));
+      
+      if (matches && count < 100) {
+        const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(" | ");
+        html += `<tr>
+          <td>${details}</td>
+          <td>
+            <div style="display:flex; gap:5px;">
+              <button onclick="editRecord('${doc.id}', ${JSON.stringify(item).replace(/"/g, '&quot;')})" style="width:auto; padding:6px 12px; background:#2196F3; color:white;">Edit</button>
+              ${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteRecord('${doc.id}')" style="width:auto; padding:6px 12px;">Delete</button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+        count++;
+      }
+    });
+    body.innerHTML = html || "<tr><td colspan='2'>No records found</td></tr>";
+  } catch(e) {
+    console.error(e);
+    body.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
+  }
+}
+
+async function editRecord(id, currentData) {
+  const newDataStr = prompt("Edit record (JSON format):", JSON.stringify(currentData));
+  if (!newDataStr) return;
+  try {
+    const newData = JSON.parse(newDataStr);
+    await db.collection("buildings").doc(id).update(newData);
+    alert("Updated successfully!");
+    loadTable();
+  } catch(e) {
+    alert("Invalid JSON or Update Error: " + e.message);
+  }
+}
+
+async function loadNews() {
+  try {
+    const doc = await db.collection("settings").doc("news").get();
+    if (doc.exists) {
+      document.getElementById("newsText").value = doc.data().text || "";
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function updateNews() {
+  const text = document.getElementById("newsText").value.trim();
+  try {
+    await db.collection("settings").doc("news").set({ text });
+    alert("News updated!");
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+async function deleteRecord(id) {
+  if(!confirm("Delete?")) return;
+  try {
+    await db.collection("buildings").doc(id).delete();
+    const snap = await db.collection("buildings").get();
+    const fireData = [];
+    snap.forEach(doc => fireData.push(doc.data()));
+    localStorage.setItem("facp_data", JSON.stringify(fireData));
+    loadTable();
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+async function clearData() {
+  if(!confirm("Clear ALL data?")) return;
+  try {
+    const snap = await db.collection("buildings").get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    localStorage.removeItem("facp_data");
+    loadTable();
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+async function createAdmin() {
+  if(currentUserRole !== 'owner') return alert("Only Owners can create admins");
+  
+  const email = document.getElementById("newAdminEmail").value.trim();
+  const pass = document.getElementById("newAdminPass").value.trim();
+  const role = document.getElementById("newAdminRole").value;
+  
+  if(!email || !pass) return alert("Enter email and password");
+  if(pass.length < 6) return alert("Password must be at least 6 characters");
+
+  try {
+    const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+    const userCred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    await secondaryApp.delete();
+
+    await db.collection("users").doc(userCred.user.uid).set({ email, role });
+    
+    alert("Admin created successfully!");
+    document.getElementById("newAdminEmail").value = "";
+    document.getElementById("newAdminPass").value = "";
+    loadAdmins();
+  } catch(e) { 
+    alert("Error: " + e.message); 
+  }
+}
+
+async function loadAdmins() {
+  const body = document.getElementById("adminsBody");
+  try {
+    const snap = await db.collection("users").get();
+    let html = "";
+    snap.forEach(doc => {
+      const u = doc.data();
+      html += `<tr>
+        <td>${u.email}</td>
+        <td>${u.role}</td>
+        <td>${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteAdmin('${doc.id}')">Remove</button>` : 'N/A'}</td>
+      </tr>`;
+    });
+    body.innerHTML = html || "<tr><td colspan='3'>No admins</td></tr>";
+  } catch(e) {
+    body.innerHTML = "<tr><td colspan='3'>Error loading admins</td></tr>";
+  }
+}
+
+async function deleteAdmin(id) {
+  if(!confirm("Remove?")) return;
+  try {
+    await db.collection("users").doc(id).delete();
+    loadAdmins();
+  } catch(e) { alert("Error: " + e.message); }
+}
+</script>
+</body>
+</html>
