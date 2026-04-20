@@ -385,7 +385,7 @@ let results = [];
     return;
   }
 
-  container.innerHTML = results.map(item => {
+ container.innerHTML = results.map(item => {
     const values = Object.values(item)
       .map(v => String(v || "").trim())
       .filter(v => v !== "");
