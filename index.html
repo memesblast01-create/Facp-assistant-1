@@ -363,7 +363,7 @@ function performSearch() {
     return Object.values(item).some(val => String(val || "").toLowerCase().includes(q));
   });
 
-  let results = [];
+let results = [];
   if (currentFilter === 'exact') {
     results = exactMatches;
   } else if (currentFilter === 'partial') {
@@ -371,6 +371,14 @@ function performSearch() {
   } else {
     results = [...exactMatches, ...partialMatches];
   }
+
+  const seen = new Set();
+  results = results.filter(item => {
+    const key = JSON.stringify(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   if (results.length === 0) {
     container.innerHTML = '<div class="no-results">No results found</div>';
