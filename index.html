@@ -385,22 +385,25 @@ function performSearch() {
              lowKey.includes('time') || lowKey.includes('date') || /^\d{10,15}$/.test(String(value));
     };
 
-    // Use the original order of keys from the object
-    // JavaScript objects maintain insertion order for string keys
-    const keys = Object.keys(item).filter(key => !isInternal(key, item[key]));
+    // Get all valid keys
+    const allKeys = Object.keys(item).filter(key => !isInternal(key, item[key]));
     
-    // Find the code key to ensure it's always first if it's not already
-    const codeKeyIndex = keys.findIndex(k => k.toLowerCase().includes('code'));
-    if (codeKeyIndex > 0) {
-      const codeKey = keys.splice(codeKeyIndex, 1)[0];
-      keys.unshift(codeKey);
-    }
+    // Explicitly identify the Code key
+    const codeKey = allKeys.find(k => k.toLowerCase().includes('code'));
+    
+    // Create the sequence: Code first, then all other keys in their original order
+    const orderedKeys = [];
+    if (codeKey) orderedKeys.push(codeKey);
+    
+    allKeys.forEach(key => {
+      if (key !== codeKey) orderedKeys.push(key);
+    });
 
-    const displayValues = keys
+    // Map to values and join with a single space
+    const singleLineText = orderedKeys
       .map(key => String(item[key] || "").trim())
-      .filter(val => val !== "");
-
-    const singleLineText = displayValues.join(" ");
+      .filter(val => val !== "")
+      .join(" ");
 
     return `
       <div class="result-card" style="text-align: center; border-left: none; border-bottom: 2px solid #25D366;">
