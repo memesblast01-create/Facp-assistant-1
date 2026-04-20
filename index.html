@@ -378,18 +378,9 @@ function performSearch() {
   }
 
   container.innerHTML = results.map(item => {
-    // Define internal fields to exclude
-    const isInternal = (key, value) => {
-      const lowKey = key.toLowerCase();
-      return lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || 
-             lowKey.includes('time') || lowKey.includes('date') || /^\d{10,15}$/.test(String(value));
-    };
-
-    // Display all non-internal values exactly in the order they exist in the object
-    // This will follow the sequence from the original Excel/CSV file
-    const singleLineText = Object.keys(item)
-      .filter(key => !isInternal(key, item[key]))
-      .map(key => String(item[key] || "").trim())
+    // Display EVERY field exactly as it exists in the object, no filtering at all
+    const singleLineText = Object.values(item)
+      .map(val => String(val || "").trim())
       .filter(val => val !== "")
       .join(" ");
 
