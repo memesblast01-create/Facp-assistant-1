@@ -385,18 +385,16 @@ function performSearch() {
              lowKey.includes('time') || lowKey.includes('date') || /^\d{10,15}$/.test(String(value));
     };
 
-    // Get all keys and sort them to maintain consistent sequence (Code first, then others)
-    // Assuming 'Code' or similar is the first field in your data structure
+    // Use the original order of keys from the object
+    // JavaScript objects maintain insertion order for string keys
     const keys = Object.keys(item).filter(key => !isInternal(key, item[key]));
     
-    // Sort keys: prioritize keys containing 'code', then keep original order if possible
-    keys.sort((a, b) => {
-      const aLow = a.toLowerCase();
-      const bLow = b.toLowerCase();
-      if (aLow.includes('code') && !bLow.includes('code')) return -1;
-      if (!aLow.includes('code') && bLow.includes('code')) return 1;
-      return 0; // Keep relative order for other fields
-    });
+    // Find the code key to ensure it's always first if it's not already
+    const codeKeyIndex = keys.findIndex(k => k.toLowerCase().includes('code'));
+    if (codeKeyIndex > 0) {
+      const codeKey = keys.splice(codeKeyIndex, 1)[0];
+      keys.unshift(codeKey);
+    }
 
     const displayValues = keys
       .map(key => String(item[key] || "").trim())
