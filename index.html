@@ -378,17 +378,29 @@ function performSearch() {
   }
 
   container.innerHTML = results.map(item => {
-    // Collect all non-internal values to display in one line
-    const displayValues = [];
-    Object.entries(item).forEach(([key, value]) => {
+    // Define internal fields to exclude
+    const isInternal = (key, value) => {
       const lowKey = key.toLowerCase();
-      const isInternal = lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || lowKey.includes('time') || lowKey.includes('date');
-      const isTimestamp = /^\d{10,15}$/.test(String(value));
-      
-      if (isInternal || isTimestamp || !value || String(value).trim() === "") return;
-      
-      displayValues.push(String(value).trim());
+      return lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || 
+             lowKey.includes('time') || lowKey.includes('date') || /^\d{10,15}$/.test(String(value));
+    };
+
+    // Get all keys and sort them to maintain consistent sequence (Code first, then others)
+    // Assuming 'Code' or similar is the first field in your data structure
+    const keys = Object.keys(item).filter(key => !isInternal(key, item[key]));
+    
+    // Sort keys: prioritize keys containing 'code', then keep original order if possible
+    keys.sort((a, b) => {
+      const aLow = a.toLowerCase();
+      const bLow = b.toLowerCase();
+      if (aLow.includes('code') && !bLow.includes('code')) return -1;
+      if (!aLow.includes('code') && bLow.includes('code')) return 1;
+      return 0; // Keep relative order for other fields
     });
+
+    const displayValues = keys
+      .map(key => String(item[key] || "").trim())
+      .filter(val => val !== "");
 
     const singleLineText = displayValues.join(" ");
 
