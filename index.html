@@ -386,8 +386,9 @@ let results = [];
   }
 
  container.innerHTML = results.map(item => {
-    const values = Object.values(item)
-      .map(v => String(v || "").trim())
+   const values = Object.entries(item)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, v]) => String(v || "").trim())
       .filter(v => v !== "");
 
     return `
