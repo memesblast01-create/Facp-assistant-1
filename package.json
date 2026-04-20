@@ -1,0 +1,25 @@
+{
+  "name": "facp-assistant-1",
+  "version": "1.0.0",
+  "description": "A production-ready web application for searching and managing building information with Firebase integration, role-based admin controls, and flexible data upload capabilities.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memesblast01-create/Facp-assistant-1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/memesblast01-create/Facp-assistant-1/issues"
+  },
+  "homepage": "https://github.com/memesblast01-create/Facp-assistant-1#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1"
+  }
+}

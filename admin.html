@@ -483,9 +483,13 @@ async function loadNews() {
 async function updateNews() {
   const text = document.getElementById("newsText").value.trim();
   try {
-    await db.collection("settings").doc("news").set({ text });
+    // Using set with merge: true to avoid permission issues if the document exists
+    await db.collection("settings").doc("news").set({ text }, { merge: true });
     alert("News updated!");
-  } catch(e) { alert("Error: " + e.message); }
+  } catch(e) { 
+    console.error(e);
+    alert("Error: " + e.message + "\n\nPlease ensure your Firebase Security Rules allow writing to the 'settings' collection."); 
+  }
 }
 
 async function deleteRecord(id) {
