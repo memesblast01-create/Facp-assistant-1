@@ -385,22 +385,10 @@ function performSearch() {
              lowKey.includes('time') || lowKey.includes('date') || /^\d{10,15}$/.test(String(value));
     };
 
-    // Get all valid keys
-    const allKeys = Object.keys(item).filter(key => !isInternal(key, item[key]));
-    
-    // Explicitly identify the Code key
-    const codeKey = allKeys.find(k => k.toLowerCase().includes('code'));
-    
-    // Create the sequence: Code first, then all other keys in their original order
-    const orderedKeys = [];
-    if (codeKey) orderedKeys.push(codeKey);
-    
-    allKeys.forEach(key => {
-      if (key !== codeKey) orderedKeys.push(key);
-    });
-
-    // Map to values and join with a single space
-    const singleLineText = orderedKeys
+    // Display all non-internal values exactly in the order they exist in the object
+    // This will follow the sequence from the original Excel/CSV file
+    const singleLineText = Object.keys(item)
+      .filter(key => !isInternal(key, item[key]))
       .map(key => String(item[key] || "").trim())
       .filter(val => val !== "")
       .join(" ");
