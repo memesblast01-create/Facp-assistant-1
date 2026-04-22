@@ -9,285 +9,171 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --g:#25D366;--gd:rgba(37,211,102,0.12);--gb:rgba(37,211,102,0.35);
-  --d:#0a0a0a;--d2:#111;--d3:#1a1a1a;--t:#e0e0e0;--m:#666
-}
-body{
-  font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);
-  min-height:100vh;padding:0 0 100px;
-  background-image:linear-gradient(rgba(37,211,102,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(37,211,102,0.02) 1px,transparent 1px);
-  background-size:36px 36px
-}
+:root{--g:#25D366;--gd:rgba(37,211,102,0.12);--gb:rgba(37,211,102,0.35);--d:#0a0a0a;--d2:#111;--d3:#1a1a1a;--t:#e0e0e0;--m:#666}
+body{font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);min-height:100vh;padding-bottom:90px}
 
-/* HEADER */
-.hdr{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px;border-bottom:1px solid var(--gb);
-  background:rgba(10,10,10,0.95);backdrop-filter:blur(10px);
-  position:sticky;top:0;z-index:50
-}
-.hdr h1{font-size:1.3em;color:var(--g);letter-spacing:3px;text-transform:uppercase;font-weight:700}
-.badge{background:var(--gd);border:1px solid var(--gb);border-radius:20px;padding:4px 10px;font-size:0.68em;color:var(--g);letter-spacing:2px;font-family:'Share Tech Mono',monospace}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--gb);background:var(--d2);position:sticky;top:0;z-index:99}
+.hdr h1{font-size:1.25em;color:var(--g);letter-spacing:3px;text-transform:uppercase;font-weight:700}
+.badge{background:var(--gd);border:1px solid var(--gb);border-radius:20px;padding:4px 10px;font-size:0.68em;color:var(--g);letter-spacing:1px;font-family:'Share Tech Mono',monospace}
 
-/* CAMERA SECTION - full width */
-#camSection{position:relative;width:100%;background:#000}
-#vid{width:100%;display:block;max-height:65vh;object-fit:cover}
-#scanCvs{display:none}
+/* ── CAMERA ── */
+#camBox{position:relative;width:100%;background:#000;min-height:260px;display:flex;align-items:center;justify-content:center}
+#vid{width:100%;max-height:60vh;object-fit:cover;display:block}
+#capCvs{display:none}
 
-/* OVERLAY on camera */
-#camOverlay{
-  position:absolute;inset:0;pointer-events:none;
-  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:14px
+/* Guide frame overlay */
+#guide{position:absolute;inset:0;pointer-events:none;display:none}
+.gframe{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);
+  width:78%;max-width:300px;height:72px;
 }
+.gframe .tl,.gframe .tr,.gframe .bl,.gframe .br{position:absolute;width:22px;height:22px;border-color:var(--g);border-style:solid}
+.gframe .tl{top:0;left:0;border-width:3px 0 0 3px}
+.gframe .tr{top:0;right:0;border-width:3px 3px 0 0}
+.gframe .bl{bottom:0;left:0;border-width:0 0 3px 3px}
+.gframe .br{bottom:0;right:0;border-width:0 3px 3px 0}
+.gline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);animation:gl 1.8s ease-in-out infinite}
+@keyframes gl{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+.glabel{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-size:0.68em;color:var(--g);letter-spacing:2px;white-space:nowrap;font-family:'Share Tech Mono',monospace}
 
-/* Scanning frame in center */
-.scan-frame{
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:75%;max-width:320px;height:70px;
+/* Status bar on camera */
+#camBar{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:10px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.88));
+  display:none;align-items:center;gap:10px
 }
-.scan-frame::before,.scan-frame::after{
-  content:'';position:absolute;width:24px;height:24px;border-color:var(--g);border-style:solid
-}
-.scan-frame::before{top:0;left:0;border-width:3px 0 0 3px}
-.scan-frame::after{top:0;right:0;border-width:3px 3px 0 0}
-.sf-b::before,.sf-b::after{
-  content:'';position:absolute;width:24px;height:24px;border-color:var(--g);border-style:solid
-}
-.sf-b::before{bottom:0;left:0;border-width:0 0 3px 3px}
-.sf-b::after{bottom:0;right:0;border-width:0 3px 3px 0}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--g);animation:p 1.2s ease-in-out infinite;flex-shrink:0}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse.off{background:#f44;animation:none}
+.pulse.wait{background:#fa0;animation:none}
+#camTxt{font-family:'Share Tech Mono',monospace;font-size:0.76em;color:var(--t);letter-spacing:1px}
 
-/* Animated scan line */
-.scan-line{
-  position:absolute;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,var(--g),transparent);
-  animation:scanLine 1.8s ease-in-out infinite
-}
-@keyframes scanLine{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+/* placeholder */
+#ph{width:100%;min-height:260px;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--m);padding:30px;text-align:center}
+#ph i{font-size:3.5em;color:var(--gb)}
+#ph p{font-size:0.86em;letter-spacing:1px;line-height:1.8}
 
-/* Status pill on camera */
-#camStatus{
-  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-  background:rgba(0,0,0,0.82);border:1px solid var(--gb);
-  border-radius:20px;padding:8px 18px;
-  font-family:'Share Tech Mono',monospace;font-size:0.75em;
-  color:var(--g);letter-spacing:1px;white-space:nowrap;
-  display:flex;align-items:center;gap:8px
-}
-.dot{
-  width:8px;height:8px;border-radius:50%;background:var(--g);
-  animation:pulse 1.2s ease-in-out infinite
-}
-.dot.red{background:#f44;animation:none}
-.dot.yellow{background:#fa0;animation:none}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+/* ── BUTTONS ── */
+.btns{display:flex;gap:10px;padding:12px 16px;background:var(--d2);border-bottom:1px solid rgba(255,255,255,0.06)}
+.btn{flex:1;padding:14px;border:none;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:1em;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s}
+.bg{background:var(--g);color:#000}.bg:active{opacity:.75}.bg:disabled{opacity:.3;cursor:not-allowed}
+.bo{background:var(--d3);color:var(--g);border:1px solid var(--gb)}.bo:active{background:var(--gd)}.bo:disabled{opacity:.3;cursor:not-allowed}
+.br{background:rgba(255,68,68,.1);color:#f55;border:1px solid rgba(255,68,68,.25)}
 
-/* Detected code flash overlay */
-#detectFlash{
-  position:absolute;inset:0;background:rgba(37,211,102,0.15);
-  display:none;align-items:center;justify-content:center;
-  font-family:'Share Tech Mono',monospace;font-size:1.8em;
-  color:var(--g);font-weight:700;letter-spacing:3px;
-  text-shadow:0 0 20px var(--g)
-}
-
-/* PLACEHOLDER when camera off */
-#camPlaceholder{
-  width:100%;min-height:280px;background:#000;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:12px;color:var(--m);padding:30px
-}
-#camPlaceholder i{font-size:3.5em;color:var(--gb)}
-#camPlaceholder p{font-size:0.88em;letter-spacing:1px;text-align:center;line-height:1.7}
-
-/* CONTROLS below camera */
-.controls{
-  display:flex;gap:10px;padding:12px 16px;
-  background:var(--d2);border-bottom:1px solid var(--gb)
-}
-.btn{
-  flex:1;padding:13px;border:none;border-radius:10px;
-  font-family:'Rajdhani',sans-serif;font-size:0.95em;font-weight:700;
-  letter-spacing:2px;cursor:pointer;text-transform:uppercase;
-  transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px
-}
-.bg{background:var(--g);color:#000}
-.bg:active{opacity:.8}
-.bg:disabled{opacity:.3;cursor:not-allowed}
-.bo{background:var(--d3);color:var(--g);border:1px solid var(--gb)}
-.bo:active{background:var(--gd)}
-.bo:disabled{opacity:.3;cursor:not-allowed}
-.bred{background:rgba(255,68,68,0.1);color:#f55;border:1px solid rgba(255,68,68,0.25)}
-
-/* CONTENT AREA */
-.content{padding:14px 16px}
-
-/* RESULT CARD */
-.rcard{
-  background:var(--d2);border:1px solid var(--gb);
-  border-radius:14px;overflow:hidden;margin-bottom:14px;display:none
-}
-.rcard.show{display:block}
-.rch{
-  padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);
-  display:flex;align-items:center;justify-content:space-between
-}
-.rch span{color:var(--g);font-size:0.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
-.rcb{padding:14px 16px}
-
-/* Code breakdown chips */
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.chip{
-  background:var(--d3);border:1px solid var(--gb);
-  border-radius:8px;padding:7px 14px;text-align:center
-}
-.chip .cv{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:1.05em;font-weight:700;letter-spacing:2px}
-.chip .cl{font-size:0.62em;color:var(--m);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
-
-/* Edit row */
-.edit-row{
-  display:flex;gap:8px;align-items:center;
-  background:var(--d3);border:1px solid var(--gb);
-  border-radius:10px;padding:10px 14px;margin-bottom:12px
-}
-.edit-row label{font-size:0.7em;color:var(--m);letter-spacing:1px;white-space:nowrap;text-transform:uppercase}
-.edit-row input{
-  flex:1;background:transparent;border:none;
-  color:var(--g);font-family:'Share Tech Mono',monospace;
-  font-size:1em;outline:none;letter-spacing:2px
-}
-
-/* Match results */
-.mcard{
-  background:var(--d3);border:1px solid var(--gb);
-  border-radius:10px;padding:14px;margin-bottom:10px
-}
-.mfloor{
-  display:inline-flex;align-items:center;gap:6px;
-  background:var(--gd);color:var(--g);border:1px solid var(--gb);
-  border-radius:6px;padding:3px 10px;font-size:0.78em;
-  letter-spacing:2px;margin-bottom:10px;font-weight:700
-}
-.mvals{
-  font-family:'Share Tech Mono',monospace;font-size:0.92em;
-  color:#fff;letter-spacing:1px;line-height:2
-}
-.nmatch{
-  text-align:center;color:var(--m);
-  padding:22px 14px;font-size:0.85em;letter-spacing:1px;line-height:2
-}
-
-/* HISTORY */
-.hcard{
-  background:var(--d2);border:1px solid var(--gb);
-  border-radius:14px;overflow:hidden;margin-bottom:14px
-}
-.hch{
-  padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);
-  display:flex;align-items:center;justify-content:space-between
-}
-.hch span{color:var(--g);font-size:0.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
-.clrbtn{background:none;border:1px solid rgba(255,68,68,0.3);color:#f55;border-radius:6px;padding:4px 10px;font-size:0.7em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
-.hitem{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .15s}
-.hitem:active{background:var(--gd)}
-.hcode{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:0.86em;letter-spacing:1px}
-.hfl{display:inline-block;font-size:0.68em;color:var(--g);background:var(--gd);border-radius:4px;padding:1px 7px;margin-left:6px;letter-spacing:1px}
-.hres{color:var(--m);font-size:0.76em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.htime{color:var(--m);font-size:0.68em;margin-top:2px}
-.ehist{padding:26px;text-align:center;color:var(--m);font-size:0.85em;letter-spacing:1px}
-
-/* FOOTER */
-.footer{
-  position:fixed;bottom:0;left:0;width:100%;
-  padding:10px;display:flex;justify-content:center;
-  z-index:100;pointer-events:none;
-  background:linear-gradient(transparent,var(--d) 60%)
-}
-.fi{
-  background:rgba(15,15,15,0.97);backdrop-filter:blur(12px);
-  padding:9px 18px;border-radius:20px;border:1px solid var(--gb);
-  display:flex;align-items:center;gap:12px;pointer-events:auto
-}
-.fi p{margin:0;font-size:.76em;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:2px}
-.bkbtn{background:none;border:1px solid var(--gb);color:var(--g);border-radius:8px;padding:5px 12px;font-size:.74em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
-
-/* Spin util */
+/* ── PROCESSING OVERLAY ── */
+#procBox{display:none;padding:28px 20px;text-align:center;background:var(--d2);border-bottom:1px solid var(--gb)}
+#procBox .ring{width:52px;height:52px;border:3px solid var(--gd);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
+#procMsg{color:var(--g);font-family:'Share Tech Mono',monospace;font-size:.82em;letter-spacing:2px}
+#procPct{color:var(--m);font-size:.75em;margin-top:6px;font-family:'Share Tech Mono',monospace;letter-spacing:1px}
+
+/* ── CONTENT ── */
+.wrap{padding:14px 16px}
+
+/* result card */
+.rcard{background:var(--d2);border:1px solid var(--gb);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none}
+.rcard.on{display:block}
+.rch{padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);display:flex;align-items:center;justify-content:space-between}
+.rch span{color:var(--g);font-size:.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.rcb{padding:14px 16px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{background:var(--d3);border:1px solid var(--gb);border-radius:8px;padding:7px 14px;text-align:center}
+.chip .cv{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:1.05em;font-weight:700;letter-spacing:2px}
+.chip .cl{font-size:.62em;color:var(--m);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.erow{display:flex;gap:8px;align-items:center;background:var(--d3);border:1px solid var(--gb);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.erow label{font-size:.7em;color:var(--m);letter-spacing:1px;white-space:nowrap;text-transform:uppercase}
+.erow input{flex:1;background:transparent;border:none;color:var(--g);font-family:'Share Tech Mono',monospace;font-size:1em;outline:none;letter-spacing:2px}
+.gobtn{padding:8px 14px;font-size:.82em;flex:0}
+.mcard{background:var(--d3);border:1px solid var(--gb);border-radius:10px;padding:14px;margin-bottom:10px}
+.mfloor{display:inline-flex;align-items:center;gap:6px;background:var(--gd);color:var(--g);border:1px solid var(--gb);border-radius:6px;padding:3px 10px;font-size:.78em;letter-spacing:2px;margin-bottom:10px;font-weight:700}
+.mvals{font-family:'Share Tech Mono',monospace;font-size:.92em;color:#fff;letter-spacing:1px;line-height:2.1}
+.nmatch{text-align:center;color:var(--m);padding:22px 14px;font-size:.85em;letter-spacing:1px;line-height:2}
+
+/* history */
+.hcard{background:var(--d2);border:1px solid var(--gb);border-radius:14px;overflow:hidden}
+.hch{padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);display:flex;align-items:center;justify-content:space-between}
+.hch span{color:var(--g);font-size:.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.clr{background:none;border:1px solid rgba(255,68,68,.3);color:#f55;border-radius:6px;padding:4px 10px;font-size:.7em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
+.hi{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
+.hi:active{background:var(--gd)}
+.hcode{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:.86em;letter-spacing:1px}
+.hfl{display:inline-block;font-size:.68em;color:var(--g);background:var(--gd);border-radius:4px;padding:1px 7px;margin-left:6px;letter-spacing:1px}
+.hres{color:var(--m);font-size:.76em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htime{color:var(--m);font-size:.68em;margin-top:2px}
+.ehi{padding:26px;text-align:center;color:var(--m);font-size:.85em;letter-spacing:1px}
+
+.footer{position:fixed;bottom:0;left:0;width:100%;padding:10px;display:flex;justify-content:center;z-index:100;pointer-events:none;background:linear-gradient(transparent,var(--d) 60%)}
+.fi{background:rgba(15,15,15,.97);backdrop-filter:blur(12px);padding:9px 18px;border-radius:20px;border:1px solid var(--gb);display:flex;align-items:center;gap:12px;pointer-events:auto}
+.fi p{margin:0;font-size:.76em;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:2px}
+.bk{background:none;border:1px solid var(--gb);color:var(--g);border-radius:8px;padding:5px 12px;font-size:.74em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <div class="hdr">
   <h1><i class="fas fa-qrcode" style="margin-right:8px;font-size:.85em"></i>FACP Scanner</h1>
-  <div class="badge" id="dbBadge">Loading DB...</div>
+  <div class="badge" id="dbBadge">Loading...</div>
 </div>
 
 <!-- CAMERA -->
-<div id="camSection">
-  <div id="camPlaceholder">
+<div id="camBox">
+  <div id="ph">
     <i class="fas fa-camera-retro"></i>
-    <p>Tap <strong style="color:var(--g)">START SCANNING</strong> below<br>
-    Point camera at the panel label<br>
-    Code will be detected automatically</p>
+    <p>Tap <strong style="color:var(--g)">OPEN CAMERA</strong> below<br>
+       Align the code label inside the frame<br>
+       then tap <strong style="color:var(--g)">SCAN CODE</strong></p>
   </div>
   <video id="vid" autoplay playsinline muted style="display:none"></video>
-  <canvas id="scanCvs"></canvas>
+  <canvas id="capCvs"></canvas>
 
-  <!-- Overlay -->
-  <div id="camOverlay" style="display:none">
-    <div style="width:100%;text-align:center;padding-top:8px">
-      <span style="background:rgba(0,0,0,0.7);color:var(--g);font-size:0.72em;letter-spacing:2px;padding:5px 14px;border-radius:20px;font-family:'Share Tech Mono',monospace">
-        ALIGN CODE WITHIN FRAME
-      </span>
-    </div>
-    <div class="scan-frame">
-      <div class="scan-line"></div>
-      <div class="sf-b"></div>
-    </div>
-    <div id="camStatus">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusTxt">Scanning for code...</span>
+  <div id="guide">
+    <div class="gframe">
+      <div class="tl"></div><div class="tr"></div>
+      <div class="bl"></div><div class="br"></div>
+      <div class="gline"></div>
+      <div class="glabel">ALIGN CODE HERE</div>
     </div>
   </div>
 
-  <div id="detectFlash"></div>
+  <div id="camBar">
+    <div class="pulse" id="pulseD"></div>
+    <span id="camTxt">Camera ready</span>
+  </div>
 </div>
 
-<!-- CONTROLS -->
-<div class="controls">
-  <button class="btn bo" id="startBtn" onclick="startScan()">
-    <i class="fas fa-camera"></i> Start Scanning
-  </button>
-  <button class="btn bred" id="stopBtn" onclick="stopScan()" style="display:none;flex:0.5">
-    <i class="fas fa-stop"></i> Stop
-  </button>
-  <button class="btn bg" id="manualBtn" onclick="manualCapture()" style="display:none">
-    <i class="fas fa-hand-pointer"></i> Capture Now
+<!-- PROCESSING -->
+<div id="procBox">
+  <div class="ring"></div>
+  <div id="procMsg">READING CODE...</div>
+  <div id="procPct"></div>
+</div>
+
+<!-- BUTTONS -->
+<div class="btns" id="btnRow">
+  <button class="btn bg" id="openBtn" onclick="openCam()">
+    <i class="fas fa-camera"></i> Open Camera
   </button>
 </div>
 
 <!-- CONTENT -->
-<div class="content">
+<div class="wrap">
 
-  <!-- RESULT CARD -->
-  <div class="rcard" id="resultCard">
+  <!-- RESULT -->
+  <div class="rcard" id="rcard">
     <div class="rch">
-      <span><i class="fas fa-check-circle" style="margin-right:8px"></i>Code Detected</span>
-      <button class="bkbtn" onclick="resetResult()">Scan Again</button>
+      <span><i class="fas fa-check-circle" style="margin-right:8px"></i>Result</span>
+      <button class="bk" onclick="resetAll()">Scan Again</button>
     </div>
     <div class="rcb">
       <div class="chips" id="chips"></div>
-      <div class="edit-row">
+      <div class="erow">
         <label>Code</label>
-        <input type="text" id="codeInput" placeholder="e.g. 1234-GF-039">
-        <button class="btn bg" onclick="searchManual()" style="flex:0;padding:8px 14px;font-size:0.8em">GO</button>
+        <input type="text" id="codeIn" placeholder="e.g. 1234-GF-039">
+        <button class="btn bg gobtn" onclick="manSearch()">GO</button>
       </div>
-      <div id="matchResults"></div>
+      <div id="mres"></div>
     </div>
   </div>
 
@@ -295,36 +181,25 @@ body{
   <div class="hcard">
     <div class="hch">
       <span><i class="fas fa-history" style="margin-right:8px"></i>Scan History</span>
-      <button class="clrbtn" onclick="clearHist()">Clear All</button>
+      <button class="clr" onclick="clrHist()">Clear</button>
     </div>
-    <div id="histList"></div>
+    <div id="hlist"></div>
   </div>
 
 </div>
 
 <div class="footer">
   <div class="fi">
-    <button class="bkbtn" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Back</button>
+    <button class="bk" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Back</button>
     <p>FACP Scanner</p>
   </div>
 </div>
 
 <script>
 // ── FIREBASE ──────────────────────────────────────────────────────
-const FC={
-  apiKey:"AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
-  authDomain:"facp-assistant.firebaseapp.com",
-  projectId:"facp-assistant",
-  storageBucket:"facp-assistant.firebasestorage.app",
-  messagingSenderId:"771947694967",
-  appId:"1:771947694967:web:4784fd12ab43dfec6c2f72"
-};
-let db, DATA=[], stream=null, scanning=false, scanTimer=null, processing=false;
-
-try{
-  if(!firebase.apps.length) firebase.initializeApp(FC);
-  db=firebase.firestore(); loadDB();
-}catch(e){console.error(e)}
+const FC={apiKey:"AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",authDomain:"facp-assistant.firebaseapp.com",projectId:"facp-assistant",storageBucket:"facp-assistant.firebasestorage.app",messagingSenderId:"771947694967",appId:"1:771947694967:web:4784fd12ab43dfec6c2f72"};
+let db,DATA=[],stream=null;
+try{if(!firebase.apps.length)firebase.initializeApp(FC);db=firebase.firestore();loadDB();}catch(e){console.error(e)}
 
 async function loadDB(){
   try{
@@ -338,221 +213,197 @@ async function loadDB(){
   }
 }
 
-// ── FLOOR NAMES ───────────────────────────────────────────────────
-const FM={
-  GF:'Ground Floor',G:'Ground Floor',
-  RF:'Rooftop',RG:'Rooftop',
-  UG:'Underground',LG:'Lower Ground',
-  B1:'Basement 1',B2:'Basement 2',B3:'Basement 3',B4:'Basement 4',B5:'Basement 5',
-  L1:'Level 1',L2:'Level 2',L3:'Level 3',L4:'Level 4',L5:'Level 5',
-  L6:'Level 6',L7:'Level 7',L8:'Level 8',L9:'Level 9',L10:'Level 10',
-  L11:'Level 11',L12:'Level 12',L13:'Level 13',L14:'Level 14',L15:'Level 15',
-  M:'Mezzanine',MZ:'Mezzanine',P:'Podium',P1:'Podium 1',P2:'Podium 2'
-};
+// ── FLOOR MAP ─────────────────────────────────────────────────────
+const FM={GF:'Ground Floor',G:'Ground Floor',RF:'Rooftop',RG:'Rooftop',UG:'Underground',LG:'Lower Ground',B1:'Basement 1',B2:'Basement 2',B3:'Basement 3',B4:'Basement 4',B5:'Basement 5',L1:'Level 1',L2:'Level 2',L3:'Level 3',L4:'Level 4',L5:'Level 5',L6:'Level 6',L7:'Level 7',L8:'Level 8',L9:'Level 9',L10:'Level 10',L11:'Level 11',L12:'Level 12',L13:'Level 13',L14:'Level 14',L15:'Level 15',M:'Mezzanine',MZ:'Mezzanine',P:'Podium',P1:'Podium 1',P2:'Podium 2'};
 const fname=c=>FM[c.toUpperCase()]||c.toUpperCase();
 
 // ── CODE PARSER ───────────────────────────────────────────────────
-// Handles: 1234-GF-039, 1234/RF/001, 1234 L5 LOBBY, 1234B2039, 1234-GF
 function parseCode(raw){
-  let t=raw.toUpperCase().replace(/[^A-Z0-9\-\/\s\.]/g,' ').replace(/\s+/g,' ').trim();
+  // Fix common OCR mistakes before parsing
+  let t=raw.toUpperCase()
+    .replace(/O/g,'0')   // letter O → digit 0 (for building code digits)
+    .replace(/[^A-Z0-9\-\/\s]/g,' ')
+    .replace(/\s+/g,' ').trim();
+  // But restore O in floor codes like LOBBY etc
+  // We'll match on the cleaned version
 
-  // Full pattern with room: 1234-GF-039
-  const m1=t.match(/(\d{4})\s*[-\/\.\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\s*[-\/\.\s]\s*([A-Z0-9][A-Z0-9\s]{0,25})/);
-  if(m1) return{bld:m1[1],floor:m1[2],room:m1[3].trim(),full:`${m1[1]}-${m1[2]}-${m1[3].trim()}`,fn:fname(m1[2])};
+  // Pattern 1: 1234-GF-039 (with any separator)
+  const m1=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\s*[-\/\s]\s*([A-Z0-9][A-Z0-9\s]{0,25})/);
+  if(m1)return{bld:m1[1],floor:m1[2],room:m1[3].trim(),full:`${m1[1]}-${m1[2]}-${m1[3].trim()}`,fn:fname(m1[2])};
 
-  // No separator: 1234GF039
+  // Pattern 2: no separator 1234GF039
   const m2=t.match(/(\d{4})(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})([A-Z0-9]+)/);
-  if(m2) return{bld:m2[1],floor:m2[2],room:m2[3],full:`${m2[1]}-${m2[2]}-${m2[3]}`,fn:fname(m2[2])};
+  if(m2)return{bld:m2[1],floor:m2[2],room:m2[3],full:`${m2[1]}-${m2[2]}-${m2[3]}`,fn:fname(m2[2])};
 
-  // Floor only, no room: 1234-GF
-  const m3=t.match(/(\d{4})\s*[-\/\.\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
-  if(m3) return{bld:m3[1],floor:m3[2],room:null,full:`${m3[1]}-${m3[2]}`,fn:fname(m3[2])};
+  // Pattern 3: floor only no room
+  const m3=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
+  if(m3)return{bld:m3[1],floor:m3[2],room:null,full:`${m3[1]}-${m3[2]}`,fn:fname(m3[2])};
 
-  // Just 4 digits
+  // Pattern 4: just 4 digits
   const m4=t.match(/\b(\d{4})\b/);
-  if(m4) return{bld:m4[1],floor:null,room:null,full:m4[1],fn:null};
+  if(m4)return{bld:m4[1],floor:null,room:null,full:m4[1],fn:null};
 
   return null;
 }
 
-// ── CAMERA & AUTO SCAN ────────────────────────────────────────────
-async function startScan(){
+// ── CAMERA ────────────────────────────────────────────────────────
+async function openCam(){
   try{
-    setStatus('yellow','Starting camera...');
+    camStatus('wait','Starting camera...');
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
     });
     const v=document.getElementById('vid');
     v.srcObject=stream; v.style.display='block';
-    document.getElementById('camPlaceholder').style.display='none';
-    document.getElementById('camOverlay').style.display='flex';
-    document.getElementById('startBtn').style.display='none';
-    document.getElementById('stopBtn').style.display='flex';
-    document.getElementById('manualBtn').style.display='flex';
-    scanning=true;
-    setStatus('green','Scanning for code...');
-    // Start auto-scan loop every 1.5 seconds
-    scanTimer=setInterval(autoScanFrame,1500);
+    document.getElementById('ph').style.display='none';
+    document.getElementById('guide').style.display='block';
+    document.getElementById('camBar').style.display='flex';
+    // Show scan button
+    document.getElementById('btnRow').innerHTML=`
+      <button class="btn bo" onclick="closeCam()" style="flex:0.45"><i class="fas fa-times"></i> Close</button>
+      <button class="btn bg" id="scanBtn" onclick="doScan()"><i class="fas fa-crosshairs"></i> Scan Code</button>
+    `;
+    camStatus('green','Align code inside frame then tap SCAN CODE');
   }catch(e){
-    setStatus('red','Camera error: '+e.message);
+    alert('Camera error: '+e.message+'\n\nMake sure you allowed camera permission.');
   }
 }
 
-function stopScan(){
-  scanning=false;
-  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
+function closeCam(){
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
   document.getElementById('vid').style.display='none';
-  document.getElementById('camPlaceholder').style.display='flex';
-  document.getElementById('camOverlay').style.display='none';
-  document.getElementById('startBtn').style.display='flex';
-  document.getElementById('stopBtn').style.display='none';
-  document.getElementById('manualBtn').style.display='none';
-  processing=false;
+  document.getElementById('ph').style.display='flex';
+  document.getElementById('guide').style.display='none';
+  document.getElementById('camBar').style.display='none';
+  document.getElementById('btnRow').innerHTML=`<button class="btn bg" onclick="openCam()"><i class="fas fa-camera"></i> Open Camera</button>`;
 }
 
-// Auto scan frame every 1.5s
-async function autoScanFrame(){
-  if(processing||!scanning)return;
+// ── SCAN (called when user taps SCAN CODE) ────────────────────────
+async function doScan(){
   const v=document.getElementById('vid');
-  if(!v.videoWidth)return;
-  processing=true;
-  setStatus('yellow','Analyzing frame...');
+  if(!v.videoWidth){alert('Camera not ready yet, wait a moment');return;}
 
-  const cvs=document.getElementById('scanCvs');
+  // Disable button during processing
+  const btn=document.getElementById('scanBtn');
+  if(btn)btn.disabled=true;
+
+  // Capture full frame
+  const cvs=document.getElementById('capCvs');
   cvs.width=v.videoWidth; cvs.height=v.videoHeight;
   const ctx=cvs.getContext('2d');
-
-  // Enhance contrast + grayscale for better OCR
-  ctx.filter='grayscale(1) contrast(2.5) brightness(1.1)';
   ctx.drawImage(v,0,0);
 
-  const imgData=cvs.toDataURL('image/png');
+  // Save color photo to gallery
+  const colorPhoto=cvs.toDataURL('image/jpeg',0.92);
+  saveGallery(colorPhoto);
+
+  // Close camera
+  closeCam();
+
+  // Show processing
+  document.getElementById('procBox').style.display='block';
+  procMsg('Preparing image...','');
+
+  // Crop CENTER 60% of image where label is most likely
+  const cropCvs=document.createElement('canvas');
+  const cw=Math.floor(cvs.width*0.8), ch=Math.floor(cvs.height*0.6);
+  const cx=Math.floor((cvs.width-cw)/2), cy=Math.floor((cvs.height-ch)/2);
+  cropCvs.width=cw; cropCvs.height=ch;
+  const cctx=cropCvs.getContext('2d');
+
+  // Apply strong contrast enhancement for OCR
+  cctx.filter='grayscale(1) contrast(2.8) brightness(1.15) sharpen(1)';
+  cctx.drawImage(cvs,cx,cy,cw,ch,0,0,cw,ch);
+  const imgForOCR=cropCvs.toDataURL('image/png');
 
   try{
-    const res=await Tesseract.recognize(imgData,'eng',{
-      logger:()=>{} // silent
+    procMsg('Reading text from image...','0%');
+    const result=await Tesseract.recognize(imgForOCR,'eng',{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          procMsg('Reading text...', Math.round(m.progress*100)+'%');
+        }
+      }
     });
-    const raw=res.data.text;
+
+    const raw=result.data.text;
+    console.log('OCR output:', raw); // for debugging
+
+    document.getElementById('procBox').style.display='none';
+
     const parsed=parseCode(raw);
 
     if(parsed){
-      // CODE FOUND — auto capture original (color) image
-      const capCvs=document.createElement('canvas');
-      capCvs.width=v.videoWidth; capCvs.height=v.videoHeight;
-      capCvs.getContext('2d').drawImage(v,0,0);
-      const capData=capCvs.toDataURL('image/jpeg',0.92);
-
-      // Flash effect
-      flashDetected(parsed.full);
-
-      // Save to gallery
-      saveGallery(capData);
-
-      // Stop scanning
-      stopScan();
-
-      // Show results
       showResult(parsed);
       searchDB(parsed);
-
     }else{
-      setStatus('green','Scanning... hold steady');
-      processing=false;
+      // Show result card with empty input so user can type manually
+      document.getElementById('rcard').classList.add('on');
+      document.getElementById('chips').innerHTML='<div style="color:var(--m);font-size:.82em;letter-spacing:1px;padding:4px 0">Could not read code automatically</div>';
+      document.getElementById('mres').innerHTML='<div class="nmatch">OCR could not detect the code pattern.<br><br>Type the code manually above and tap <strong style="color:var(--g)">GO</strong></div>';
+      window.scrollTo({top:0,behavior:'smooth'});
     }
+
   }catch(e){
-    setStatus('green','Scanning...');
-    processing=false;
+    document.getElementById('procBox').style.display='none';
+    alert('OCR Error: '+e.message);
+    if(btn)btn.disabled=false;
   }
-}
-
-// Manual capture button
-async function manualCapture(){
-  if(processing)return;
-  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
-  processing=false;
-  await autoScanFrame();
-  // Restart auto scan if nothing found
-  if(scanning&&!scanTimer){
-    scanTimer=setInterval(autoScanFrame,1500);
-  }
-}
-
-// ── FLASH ANIMATION ───────────────────────────────────────────────
-function flashDetected(code){
-  const fl=document.getElementById('detectFlash');
-  fl.textContent=code;
-  fl.style.display='flex';
-  setTimeout(()=>fl.style.display='none',1200);
 }
 
 // ── SHOW RESULT ───────────────────────────────────────────────────
 function showResult(p){
-  document.getElementById('resultCard').classList.add('show');
-  document.getElementById('codeInput').value=p.full;
-
+  document.getElementById('rcard').classList.add('on');
+  document.getElementById('codeIn').value=p.full;
   document.getElementById('chips').innerHTML=`
     <div class="chip"><div class="cv">${p.bld}</div><div class="cl">Building</div></div>
     ${p.floor?`<div class="chip"><div class="cv">${p.floor}</div><div class="cl">${p.fn}</div></div>`:''}
-    ${p.room?`<div class="chip"><div class="cv">${p.room}</div><div class="cl">Room / Zone</div></div>`:''}
+    ${p.room?`<div class="chip"><div class="cv">${p.room}</div><div class="cl">Room/Zone</div></div>`:''}
   `;
-  window.scrollTo({top:document.getElementById('resultCard').offsetTop-70,behavior:'smooth'});
+  window.scrollTo({top:document.getElementById('rcard').offsetTop-70,behavior:'smooth'});
 }
 
 // ── SEARCH DB ─────────────────────────────────────────────────────
 function searchDB(p){
   const q=p.bld.toLowerCase();
   let res=DATA.filter(item=>Object.values(item).some(v=>String(v||'').toLowerCase().includes(q)));
-
-  // Deduplicate
   const seen=new Set();
   res=res.filter(item=>{const k=JSON.stringify(item);if(seen.has(k))return false;seen.add(k);return true;});
 
-  const con=document.getElementById('matchResults');
+  const con=document.getElementById('mres');
   if(!res.length){
-    con.innerHTML=`<div class="nmatch">No records found for building <strong style="color:var(--g)">${p.bld}</strong><br>Try scanning again or edit the code.</div>`;
+    con.innerHTML=`<div class="nmatch">No records found for building <strong style="color:var(--g)">${p.bld}</strong><br>Edit the code above and tap GO to try again.</div>`;
     saveHist(p.full,p.fn,'No match');
     return;
   }
 
   const fh=p.fn?`<div class="mfloor"><i class="fas fa-layer-group"></i>${p.fn}${p.room?' — '+p.room:''}</div>`:'';
-
   con.innerHTML=res.map(item=>{
-    const vals=Object.entries(item)
-      .sort((a,b)=>a[0].localeCompare(b[0]))
-      .map(([k,v])=>String(v||'').trim())
-      .filter(v=>v);
+    const vals=Object.entries(item).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>String(v||'').trim()).filter(v=>v);
     return`<div class="mcard">${fh}<div class="mvals">${vals.join(' — ')}</div></div>`;
   }).join('');
 
-  const rt=res.map(item=>
-    Object.entries(item).sort((a,b)=>a[0].localeCompare(b[0]))
-    .map(([k,v])=>String(v||'').trim()).filter(v=>v).join(' — ')
-  ).join(' | ');
+  const rt=res.map(item=>Object.entries(item).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>String(v||'').trim()).filter(v=>v).join(' — ')).join(' | ');
   saveHist(p.full,p.fn,rt);
 }
 
-function searchManual(){
-  const v=document.getElementById('codeInput').value.trim();
+function manSearch(){
+  const v=document.getElementById('codeIn').value.trim();
   if(!v)return;
   const p=parseCode(v)||{bld:v,floor:null,room:null,full:v,fn:null};
-  showResult(p);
-  searchDB(p);
+  showResult(p); searchDB(p);
 }
 
-function resetResult(){
-  document.getElementById('resultCard').classList.remove('show');
-  document.getElementById('matchResults').innerHTML='';
+function resetAll(){
+  document.getElementById('rcard').classList.remove('on');
+  document.getElementById('mres').innerHTML='';
   document.getElementById('chips').innerHTML='';
+  document.getElementById('codeIn').value='';
 }
 
 // ── GALLERY ───────────────────────────────────────────────────────
 function saveGallery(d){
-  try{
-    const a=document.createElement('a');
-    a.href=d; a.download='FACP_'+Date.now()+'.jpg';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  }catch(e){}
+  try{const a=document.createElement('a');a.href=d;a.download='FACP_'+Date.now()+'.jpg';document.body.appendChild(a);a.click();document.body.removeChild(a);}catch(e){}
 }
 
 // ── HISTORY ───────────────────────────────────────────────────────
@@ -566,13 +417,10 @@ function saveHist(code,floor,result){
 
 function renderHist(){
   const h=JSON.parse(localStorage.getItem('facp_hist')||'[]');
-  const el=document.getElementById('histList');
-  if(!h.length){
-    el.innerHTML='<div class="ehist"><i class="fas fa-history" style="font-size:2em;display:block;margin-bottom:8px;opacity:.2"></i>No scans yet</div>';
-    return;
-  }
+  const el=document.getElementById('hlist');
+  if(!h.length){el.innerHTML='<div class="ehi"><i class="fas fa-history" style="font-size:2em;display:block;margin-bottom:8px;opacity:.2"></i>No scans yet</div>';return;}
   el.innerHTML=h.map((it,i)=>`
-    <div class="hitem" onclick="loadHist(${i})">
+    <div class="hi" onclick="loadHist(${i})">
       <div class="hcode">${it.code}${it.floor?`<span class="hfl">${it.floor}</span>`:''}</div>
       <div class="hres">${it.result}</div>
       <div class="htime">${it.time}</div>
@@ -583,20 +431,26 @@ function loadHist(i){
   const h=JSON.parse(localStorage.getItem('facp_hist')||'[]');
   const it=h[i];
   const p=parseCode(it.code)||{bld:it.code,floor:null,room:null,full:it.code,fn:it.floor};
-  showResult(p);
-  searchDB(p);
+  showResult(p); searchDB(p);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function clearHist(){
+function clrHist(){
   if(!confirm('Clear all scan history?'))return;
   localStorage.removeItem('facp_hist'); renderHist();
 }
 
-// ── STATUS ────────────────────────────────────────────────────────
-function setStatus(color,msg){
-  document.getElementById('statusDot').className='dot '+(color==='green'?'':color);
-  document.getElementById('statusTxt').textContent=msg;
+// ── HELPERS ───────────────────────────────────────────────────────
+function camStatus(type,msg){
+  document.getElementById('camBar').style.display='flex';
+  const d=document.getElementById('pulseD');
+  d.className='pulse'+(type==='green'?'':' '+type);
+  document.getElementById('camTxt').textContent=msg;
+}
+
+function procMsg(msg,pct){
+  document.getElementById('procMsg').textContent=msg;
+  document.getElementById('procPct').textContent=pct;
 }
 
 renderHist();
