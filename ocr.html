@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FACP Scanner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --g:#25D366;--gd:rgba(37,211,102,0.12);--gb:rgba(37,211,102,0.35);
+  --d:#0a0a0a;--d2:#111;--d3:#1a1a1a;--t:#e0e0e0;--m:#666
+}
+body{
+  font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);
+  min-height:100vh;padding:0 0 100px;
+  background-image:linear-gradient(rgba(37,211,102,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(37,211,102,0.02) 1px,transparent 1px);
+  background-size:36px 36px
+}
+
+/* HEADER */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--gb);
+  background:rgba(10,10,10,0.95);backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:50
+}
+.hdr h1{font-size:1.3em;color:var(--g);letter-spacing:3px;text-transform:uppercase;font-weight:700}
+.badge{background:var(--gd);border:1px solid var(--gb);border-radius:20px;padding:4px 10px;font-size:0.68em;color:var(--g);letter-spacing:2px;font-family:'Share Tech Mono',monospace}
+
+/* CAMERA SECTION - full width */
+#camSection{position:relative;width:100%;background:#000}
+#vid{width:100%;display:block;max-height:65vh;object-fit:cover}
+#scanCvs{display:none}
+
+/* OVERLAY on camera */
+#camOverlay{
+  position:absolute;inset:0;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:14px
+}
+
+/* Scanning frame in center */
+.scan-frame{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:75%;max-width:320px;height:70px;
+}
+.scan-frame::before,.scan-frame::after{
+  content:'';position:absolute;width:24px;height:24px;border-color:var(--g);border-style:solid
+}
+.scan-frame::before{top:0;left:0;border-width:3px 0 0 3px}
+.scan-frame::after{top:0;right:0;border-width:3px 3px 0 0}
+.sf-b::before,.sf-b::after{
+  content:'';position:absolute;width:24px;height:24px;border-color:var(--g);border-style:solid
+}
+.sf-b::before{bottom:0;left:0;border-width:0 0 3px 3px}
+.sf-b::after{bottom:0;right:0;border-width:0 3px 3px 0}
+
+/* Animated scan line */
+.scan-line{
+  position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--g),transparent);
+  animation:scanLine 1.8s ease-in-out infinite
+}
+@keyframes scanLine{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+
+/* Status pill on camera */
+#camStatus{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.82);border:1px solid var(--gb);
+  border-radius:20px;padding:8px 18px;
+  font-family:'Share Tech Mono',monospace;font-size:0.75em;
+  color:var(--g);letter-spacing:1px;white-space:nowrap;
+  display:flex;align-items:center;gap:8px
+}
+.dot{
+  width:8px;height:8px;border-radius:50%;background:var(--g);
+  animation:pulse 1.2s ease-in-out infinite
+}
+.dot.red{background:#f44;animation:none}
+.dot.yellow{background:#fa0;animation:none}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+
+/* Detected code flash overlay */
+#detectFlash{
+  position:absolute;inset:0;background:rgba(37,211,102,0.15);
+  display:none;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:1.8em;
+  color:var(--g);font-weight:700;letter-spacing:3px;
+  text-shadow:0 0 20px var(--g)
+}
+
+/* PLACEHOLDER when camera off */
+#camPlaceholder{
+  width:100%;min-height:280px;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;color:var(--m);padding:30px
+}
+#camPlaceholder i{font-size:3.5em;color:var(--gb)}
+#camPlaceholder p{font-size:0.88em;letter-spacing:1px;text-align:center;line-height:1.7}
+
+/* CONTROLS below camera */
+.controls{
+  display:flex;gap:10px;padding:12px 16px;
+  background:var(--d2);border-bottom:1px solid var(--gb)
+}
+.btn{
+  flex:1;padding:13px;border:none;border-radius:10px;
+  font-family:'Rajdhani',sans-serif;font-size:0.95em;font-weight:700;
+  letter-spacing:2px;cursor:pointer;text-transform:uppercase;
+  transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px
+}
+.bg{background:var(--g);color:#000}
+.bg:active{opacity:.8}
+.bg:disabled{opacity:.3;cursor:not-allowed}
+.bo{background:var(--d3);color:var(--g);border:1px solid var(--gb)}
+.bo:active{background:var(--gd)}
+.bo:disabled{opacity:.3;cursor:not-allowed}
+.bred{background:rgba(255,68,68,0.1);color:#f55;border:1px solid rgba(255,68,68,0.25)}
+
+/* CONTENT AREA */
+.content{padding:14px 16px}
+
+/* RESULT CARD */
+.rcard{
+  background:var(--d2);border:1px solid var(--gb);
+  border-radius:14px;overflow:hidden;margin-bottom:14px;display:none
+}
+.rcard.show{display:block}
+.rch{
+  padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);
+  display:flex;align-items:center;justify-content:space-between
+}
+.rch span{color:var(--g);font-size:0.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.rcb{padding:14px 16px}
+
+/* Code breakdown chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{
+  background:var(--d3);border:1px solid var(--gb);
+  border-radius:8px;padding:7px 14px;text-align:center
+}
+.chip .cv{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:1.05em;font-weight:700;letter-spacing:2px}
+.chip .cl{font-size:0.62em;color:var(--m);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+/* Edit row */
+.edit-row{
+  display:flex;gap:8px;align-items:center;
+  background:var(--d3);border:1px solid var(--gb);
+  border-radius:10px;padding:10px 14px;margin-bottom:12px
+}
+.edit-row label{font-size:0.7em;color:var(--m);letter-spacing:1px;white-space:nowrap;text-transform:uppercase}
+.edit-row input{
+  flex:1;background:transparent;border:none;
+  color:var(--g);font-family:'Share Tech Mono',monospace;
+  font-size:1em;outline:none;letter-spacing:2px
+}
+
+/* Match results */
+.mcard{
+  background:var(--d3);border:1px solid var(--gb);
+  border-radius:10px;padding:14px;margin-bottom:10px
+}
+.mfloor{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--gd);color:var(--g);border:1px solid var(--gb);
+  border-radius:6px;padding:3px 10px;font-size:0.78em;
+  letter-spacing:2px;margin-bottom:10px;font-weight:700
+}
+.mvals{
+  font-family:'Share Tech Mono',monospace;font-size:0.92em;
+  color:#fff;letter-spacing:1px;line-height:2
+}
+.nmatch{
+  text-align:center;color:var(--m);
+  padding:22px 14px;font-size:0.85em;letter-spacing:1px;line-height:2
+}
+
+/* HISTORY */
+.hcard{
+  background:var(--d2);border:1px solid var(--gb);
+  border-radius:14px;overflow:hidden;margin-bottom:14px
+}
+.hch{
+  padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);
+  display:flex;align-items:center;justify-content:space-between
+}
+.hch span{color:var(--g);font-size:0.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.clrbtn{background:none;border:1px solid rgba(255,68,68,0.3);color:#f55;border-radius:6px;padding:4px 10px;font-size:0.7em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
+.hitem{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .15s}
+.hitem:active{background:var(--gd)}
+.hcode{font-family:'Share Tech Mono',monospace;color:var(--g);font-size:0.86em;letter-spacing:1px}
+.hfl{display:inline-block;font-size:0.68em;color:var(--g);background:var(--gd);border-radius:4px;padding:1px 7px;margin-left:6px;letter-spacing:1px}
+.hres{color:var(--m);font-size:0.76em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htime{color:var(--m);font-size:0.68em;margin-top:2px}
+.ehist{padding:26px;text-align:center;color:var(--m);font-size:0.85em;letter-spacing:1px}
+
+/* FOOTER */
+.footer{
+  position:fixed;bottom:0;left:0;width:100%;
+  padding:10px;display:flex;justify-content:center;
+  z-index:100;pointer-events:none;
+  background:linear-gradient(transparent,var(--d) 60%)
+}
+.fi{
+  background:rgba(15,15,15,0.97);backdrop-filter:blur(12px);
+  padding:9px 18px;border-radius:20px;border:1px solid var(--gb);
+  display:flex;align-items:center;gap:12px;pointer-events:auto
+}
+.fi p{margin:0;font-size:.76em;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:2px}
+.bkbtn{background:none;border:1px solid var(--gb);color:var(--g);border-radius:8px;padding:5px 12px;font-size:.74em;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px}
+
+/* Spin util */
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <h1><i class="fas fa-qrcode" style="margin-right:8px;font-size:.85em"></i>FACP Scanner</h1>
+  <div class="badge" id="dbBadge">Loading DB...</div>
+</div>
+
+<!-- CAMERA -->
+<div id="camSection">
+  <div id="camPlaceholder">
+    <i class="fas fa-camera-retro"></i>
+    <p>Tap <strong style="color:var(--g)">START SCANNING</strong> below<br>
+    Point camera at the panel label<br>
+    Code will be detected automatically</p>
+  </div>
+  <video id="vid" autoplay playsinline muted style="display:none"></video>
+  <canvas id="scanCvs"></canvas>
+
+  <!-- Overlay -->
+  <div id="camOverlay" style="display:none">
+    <div style="width:100%;text-align:center;padding-top:8px">
+      <span style="background:rgba(0,0,0,0.7);color:var(--g);font-size:0.72em;letter-spacing:2px;padding:5px 14px;border-radius:20px;font-family:'Share Tech Mono',monospace">
+        ALIGN CODE WITHIN FRAME
+      </span>
+    </div>
+    <div class="scan-frame">
+      <div class="scan-line"></div>
+      <div class="sf-b"></div>
+    </div>
+    <div id="camStatus">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusTxt">Scanning for code...</span>
+    </div>
+  </div>
+
+  <div id="detectFlash"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button class="btn bo" id="startBtn" onclick="startScan()">
+    <i class="fas fa-camera"></i> Start Scanning
+  </button>
+  <button class="btn bred" id="stopBtn" onclick="stopScan()" style="display:none;flex:0.5">
+    <i class="fas fa-stop"></i> Stop
+  </button>
+  <button class="btn bg" id="manualBtn" onclick="manualCapture()" style="display:none">
+    <i class="fas fa-hand-pointer"></i> Capture Now
+  </button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- RESULT CARD -->
+  <div class="rcard" id="resultCard">
+    <div class="rch">
+      <span><i class="fas fa-check-circle" style="margin-right:8px"></i>Code Detected</span>
+      <button class="bkbtn" onclick="resetResult()">Scan Again</button>
+    </div>
+    <div class="rcb">
+      <div class="chips" id="chips"></div>
+      <div class="edit-row">
+        <label>Code</label>
+        <input type="text" id="codeInput" placeholder="e.g. 1234-GF-039">
+        <button class="btn bg" onclick="searchManual()" style="flex:0;padding:8px 14px;font-size:0.8em">GO</button>
+      </div>
+      <div id="matchResults"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="hcard">
+    <div class="hch">
+      <span><i class="fas fa-history" style="margin-right:8px"></i>Scan History</span>
+      <button class="clrbtn" onclick="clearHist()">Clear All</button>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="fi">
+    <button class="bkbtn" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Back</button>
+    <p>FACP Scanner</p>
+  </div>
+</div>
+
+<script>
+// ── FIREBASE ──────────────────────────────────────────────────────
+const FC={
+  apiKey:"AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",
+  authDomain:"facp-assistant.firebaseapp.com",
+  projectId:"facp-assistant",
+  storageBucket:"facp-assistant.firebasestorage.app",
+  messagingSenderId:"771947694967",
+  appId:"1:771947694967:web:4784fd12ab43dfec6c2f72"
+};
+let db, DATA=[], stream=null, scanning=false, scanTimer=null, processing=false;
+
+try{
+  if(!firebase.apps.length) firebase.initializeApp(FC);
+  db=firebase.firestore(); loadDB();
+}catch(e){console.error(e)}
+
+async function loadDB(){
+  try{
+    const s=await db.collection("buildings").get();
+    s.forEach(d=>DATA.push(d.data()));
+    localStorage.setItem("facp_data",JSON.stringify(DATA));
+    document.getElementById('dbBadge').textContent=DATA.length+' RECORDS';
+  }catch(e){
+    DATA=JSON.parse(localStorage.getItem("facp_data")||"[]");
+    document.getElementById('dbBadge').textContent=DATA.length+' (CACHED)';
+  }
+}
+
+// ── FLOOR NAMES ───────────────────────────────────────────────────
+const FM={
+  GF:'Ground Floor',G:'Ground Floor',
+  RF:'Rooftop',RG:'Rooftop',
+  UG:'Underground',LG:'Lower Ground',
+  B1:'Basement 1',B2:'Basement 2',B3:'Basement 3',B4:'Basement 4',B5:'Basement 5',
+  L1:'Level 1',L2:'Level 2',L3:'Level 3',L4:'Level 4',L5:'Level 5',
+  L6:'Level 6',L7:'Level 7',L8:'Level 8',L9:'Level 9',L10:'Level 10',
+  L11:'Level 11',L12:'Level 12',L13:'Level 13',L14:'Level 14',L15:'Level 15',
+  M:'Mezzanine',MZ:'Mezzanine',P:'Podium',P1:'Podium 1',P2:'Podium 2'
+};
+const fname=c=>FM[c.toUpperCase()]||c.toUpperCase();
+
+// ── CODE PARSER ───────────────────────────────────────────────────
+// Handles: 1234-GF-039, 1234/RF/001, 1234 L5 LOBBY, 1234B2039, 1234-GF
+function parseCode(raw){
+  let t=raw.toUpperCase().replace(/[^A-Z0-9\-\/\s\.]/g,' ').replace(/\s+/g,' ').trim();
+
+  // Full pattern with room: 1234-GF-039
+  const m1=t.match(/(\d{4})\s*[-\/\.\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\s*[-\/\.\s]\s*([A-Z0-9][A-Z0-9\s]{0,25})/);
+  if(m1) return{bld:m1[1],floor:m1[2],room:m1[3].trim(),full:`${m1[1]}-${m1[2]}-${m1[3].trim()}`,fn:fname(m1[2])};
+
+  // No separator: 1234GF039
+  const m2=t.match(/(\d{4})(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})([A-Z0-9]+)/);
+  if(m2) return{bld:m2[1],floor:m2[2],room:m2[3],full:`${m2[1]}-${m2[2]}-${m2[3]}`,fn:fname(m2[2])};
+
+  // Floor only, no room: 1234-GF
+  const m3=t.match(/(\d{4})\s*[-\/\.\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
+  if(m3) return{bld:m3[1],floor:m3[2],room:null,full:`${m3[1]}-${m3[2]}`,fn:fname(m3[2])};
+
+  // Just 4 digits
+  const m4=t.match(/\b(\d{4})\b/);
+  if(m4) return{bld:m4[1],floor:null,room:null,full:m4[1],fn:null};
+
+  return null;
+}
+
+// ── CAMERA & AUTO SCAN ────────────────────────────────────────────
+async function startScan(){
+  try{
+    setStatus('yellow','Starting camera...');
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    });
+    const v=document.getElementById('vid');
+    v.srcObject=stream; v.style.display='block';
+    document.getElementById('camPlaceholder').style.display='none';
+    document.getElementById('camOverlay').style.display='flex';
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='flex';
+    document.getElementById('manualBtn').style.display='flex';
+    scanning=true;
+    setStatus('green','Scanning for code...');
+    // Start auto-scan loop every 1.5 seconds
+    scanTimer=setInterval(autoScanFrame,1500);
+  }catch(e){
+    setStatus('red','Camera error: '+e.message);
+  }
+}
+
+function stopScan(){
+  scanning=false;
+  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  document.getElementById('vid').style.display='none';
+  document.getElementById('camPlaceholder').style.display='flex';
+  document.getElementById('camOverlay').style.display='none';
+  document.getElementById('startBtn').style.display='flex';
+  document.getElementById('stopBtn').style.display='none';
+  document.getElementById('manualBtn').style.display='none';
+  processing=false;
+}
+
+// Auto scan frame every 1.5s
+async function autoScanFrame(){
+  if(processing||!scanning)return;
+  const v=document.getElementById('vid');
+  if(!v.videoWidth)return;
+  processing=true;
+  setStatus('yellow','Analyzing frame...');
+
+  const cvs=document.getElementById('scanCvs');
+  cvs.width=v.videoWidth; cvs.height=v.videoHeight;
+  const ctx=cvs.getContext('2d');
+
+  // Enhance contrast + grayscale for better OCR
+  ctx.filter='grayscale(1) contrast(2.5) brightness(1.1)';
+  ctx.drawImage(v,0,0);
+
+  const imgData=cvs.toDataURL('image/png');
+
+  try{
+    const res=await Tesseract.recognize(imgData,'eng',{
+      logger:()=>{} // silent
+    });
+    const raw=res.data.text;
+    const parsed=parseCode(raw);
+
+    if(parsed){
+      // CODE FOUND — auto capture original (color) image
+      const capCvs=document.createElement('canvas');
+      capCvs.width=v.videoWidth; capCvs.height=v.videoHeight;
+      capCvs.getContext('2d').drawImage(v,0,0);
+      const capData=capCvs.toDataURL('image/jpeg',0.92);
+
+      // Flash effect
+      flashDetected(parsed.full);
+
+      // Save to gallery
+      saveGallery(capData);
+
+      // Stop scanning
+      stopScan();
+
+      // Show results
+      showResult(parsed);
+      searchDB(parsed);
+
+    }else{
+      setStatus('green','Scanning... hold steady');
+      processing=false;
+    }
+  }catch(e){
+    setStatus('green','Scanning...');
+    processing=false;
+  }
+}
+
+// Manual capture button
+async function manualCapture(){
+  if(processing)return;
+  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
+  processing=false;
+  await autoScanFrame();
+  // Restart auto scan if nothing found
+  if(scanning&&!scanTimer){
+    scanTimer=setInterval(autoScanFrame,1500);
+  }
+}
+
+// ── FLASH ANIMATION ───────────────────────────────────────────────
+function flashDetected(code){
+  const fl=document.getElementById('detectFlash');
+  fl.textContent=code;
+  fl.style.display='flex';
+  setTimeout(()=>fl.style.display='none',1200);
+}
+
+// ── SHOW RESULT ───────────────────────────────────────────────────
+function showResult(p){
+  document.getElementById('resultCard').classList.add('show');
+  document.getElementById('codeInput').value=p.full;
+
+  document.getElementById('chips').innerHTML=`
+    <div class="chip"><div class="cv">${p.bld}</div><div class="cl">Building</div></div>
+    ${p.floor?`<div class="chip"><div class="cv">${p.floor}</div><div class="cl">${p.fn}</div></div>`:''}
+    ${p.room?`<div class="chip"><div class="cv">${p.room}</div><div class="cl">Room / Zone</div></div>`:''}
+  `;
+  window.scrollTo({top:document.getElementById('resultCard').offsetTop-70,behavior:'smooth'});
+}
+
+// ── SEARCH DB ─────────────────────────────────────────────────────
+function searchDB(p){
+  const q=p.bld.toLowerCase();
+  let res=DATA.filter(item=>Object.values(item).some(v=>String(v||'').toLowerCase().includes(q)));
+
+  // Deduplicate
+  const seen=new Set();
+  res=res.filter(item=>{const k=JSON.stringify(item);if(seen.has(k))return false;seen.add(k);return true;});
+
+  const con=document.getElementById('matchResults');
+  if(!res.length){
+    con.innerHTML=`<div class="nmatch">No records found for building <strong style="color:var(--g)">${p.bld}</strong><br>Try scanning again or edit the code.</div>`;
+    saveHist(p.full,p.fn,'No match');
+    return;
+  }
+
+  const fh=p.fn?`<div class="mfloor"><i class="fas fa-layer-group"></i>${p.fn}${p.room?' — '+p.room:''}</div>`:'';
+
+  con.innerHTML=res.map(item=>{
+    const vals=Object.entries(item)
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([k,v])=>String(v||'').trim())
+      .filter(v=>v);
+    return`<div class="mcard">${fh}<div class="mvals">${vals.join(' — ')}</div></div>`;
+  }).join('');
+
+  const rt=res.map(item=>
+    Object.entries(item).sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([k,v])=>String(v||'').trim()).filter(v=>v).join(' — ')
+  ).join(' | ');
+  saveHist(p.full,p.fn,rt);
+}
+
+function searchManual(){
+  const v=document.getElementById('codeInput').value.trim();
+  if(!v)return;
+  const p=parseCode(v)||{bld:v,floor:null,room:null,full:v,fn:null};
+  showResult(p);
+  searchDB(p);
+}
+
+function resetResult(){
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('matchResults').innerHTML='';
+  document.getElementById('chips').innerHTML='';
+}
+
+// ── GALLERY ───────────────────────────────────────────────────────
+function saveGallery(d){
+  try{
+    const a=document.createElement('a');
+    a.href=d; a.download='FACP_'+Date.now()+'.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }catch(e){}
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────
+function saveHist(code,floor,result){
+  const h=JSON.parse(localStorage.getItem('facp_hist')||'[]');
+  h.unshift({code,floor,result,time:new Date().toLocaleString()});
+  if(h.length>50)h.pop();
+  localStorage.setItem('facp_hist',JSON.stringify(h));
+  renderHist();
+}
+
+function renderHist(){
+  const h=JSON.parse(localStorage.getItem('facp_hist')||'[]');
+  const el=document.getElementById('histList');
+  if(!h.length){
+    el.innerHTML='<div class="ehist"><i class="fas fa-history" style="font-size:2em;display:block;margin-bottom:8px;opacity:.2"></i>No scans yet</div>';
+    return;
+  }
+  el.innerHTML=h.map((it,i)=>`
+    <div class="hitem" onclick="loadHist(${i})">
+      <div class="hcode">${it.code}${it.floor?`<span class="hfl">${it.floor}</span>`:''}</div>
+      <div class="hres">${it.result}</div>
+      <div class="htime">${it.time}</div>
+    </div>`).join('');
+}
+
+function loadHist(i){
+  const h=JSON.parse(localStorage.getItem('facp_hist')||'[]');
+  const it=h[i];
+  const p=parseCode(it.code)||{bld:it.code,floor:null,room:null,full:it.code,fn:it.floor};
+  showResult(p);
+  searchDB(p);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function clearHist(){
+  if(!confirm('Clear all scan history?'))return;
+  localStorage.removeItem('facp_hist'); renderHist();
+}
+
+// ── STATUS ────────────────────────────────────────────────────────
+function setStatus(color,msg){
+  document.getElementById('statusDot').className='dot '+(color==='green'?'':color);
+  document.getElementById('statusTxt').textContent=msg;
+}
+
+renderHist();
+</script>
+</body>
+</html>
