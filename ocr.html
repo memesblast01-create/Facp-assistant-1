@@ -183,20 +183,30 @@ const FM={GF:'Ground Floor',G:'Ground Floor',RF:'Rooftop',RG:'Rooftop',UG:'Under
 const fname=c=>FM[c.toUpperCase()]||c.toUpperCase();
 
 // ── CODE PARSER ───────────────────────────────────────────────────
+// Handles full format: 4619-GF-008-BABY CHANGING ROOM
 function parseCode(raw){
-  let t=raw.toUpperCase().replace(/[^A-Z0-9\-\/\s]/g,' ').replace(/\s+/g,' ').trim();
-  // Pattern 1: 1234-GF-039
-  const m1=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\s*[-\/\s]\s*([A-Z0-9][A-Z0-9\s]{0,25})/);
-  if(m1)return{bld:m1[1],floor:m1[2],room:m1[3].trim(),full:`${m1[1]}-${m1[2]}-${m1[3].trim()}`,fn:fname(m1[2])};
-  // Pattern 2: 1234GF039
-  const m2=t.match(/(\d{4})(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})([A-Z0-9]+)/);
-  if(m2)return{bld:m2[1],floor:m2[2],room:m2[3],full:`${m2[1]}-${m2[2]}-${m2[3]}`,fn:fname(m2[2])};
-  // Pattern 3: 1234-GF only
-  const m3=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
-  if(m3)return{bld:m3[1],floor:m3[2],room:null,full:`${m3[1]}-${m3[2]}`,fn:fname(m3[2])};
-  // Pattern 4: just 4 digits
-  const m4=t.match(/\b(\d{4})\b/);
-  if(m4)return{bld:m4[1],floor:null,room:null,full:m4[1],fn:null};
+  let t=raw.toUpperCase().trim();
+
+  // Full format: 4 digits - floor - zone number - location name
+  const m1=t.match(/(\d{4})[-\s](GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})[-\s](\d{1,4})[-\s]([A-Z][A-Z0-9\s]{1,40})/);
+  if(m1)return{bld:m1[1],floor:m1[2],room:m1[3]+'-'+m1[4].trim(),full:`${m1[1]}-${m1[2]}-${m1[3]}-${m1[4].trim()}`,fn:fname(m1[2]),location:m1[4].trim()};
+
+  // Format: 4 digits - floor - location (no zone number)
+  const m2=t.match(/(\d{4})[-\s](GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})[-\s]([A-Z][A-Z0-9\s]{1,40})/);
+  if(m2)return{bld:m2[1],floor:m2[2],room:m2[3].trim(),full:`${m2[1]}-${m2[2]}-${m2[3].trim()}`,fn:fname(m2[2]),location:m2[3].trim()};
+
+  // No separator version: 1234GF008
+  const m3=t.match(/(\d{4})(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})(\d{1,4})/);
+  if(m3)return{bld:m3[1],floor:m3[2],room:m3[3],full:`${m3[1]}-${m3[2]}-${m3[3]}`,fn:fname(m3[2]),location:null};
+
+  // Floor only: 1234-GF
+  const m4=t.match(/(\d{4})[-\s](GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
+  if(m4)return{bld:m4[1],floor:m4[2],room:null,full:`${m4[1]}-${m4[2]}`,fn:fname(m4[2]),location:null};
+
+  // Just 4 digits
+  const m5=t.match(/\b(\d{4})\b/);
+  if(m5)return{bld:m5[1],floor:null,room:null,full:m5[1],fn:null,location:null};
+
   return null;
 }
 
@@ -254,7 +264,7 @@ async function doScan(){
   setProc('SENDING TO GEMINI AI...','Reading panel label...');
 
   // Resize image to reduce data size (800px max)
-  const b64=resizeToB64(cvs,800);
+  const b64=resizeToB64(cvs,1200);
 
   try{
     const response=await fetch(WORKER_URL,{
@@ -264,27 +274,26 @@ async function doScan(){
         contents:[{
           parts:[
             {
-              // Very specific prompt — tells Gemini exactly what pattern to find
-              text:`This is a photo of a building FACP panel label or sticker.
+              text:`This is a photo of a FACP (Fire Alarm Control Panel) screen.
 
-Your ONLY job is to find and return the building code from this image.
+The green LCD screen at the top of the panel shows a code on the first line.
 
-The code format is ALWAYS: 4 digits, then a floor code, then a room number or name.
-Floor codes are: GF (Ground Floor), RF (Rooftop), B1-B5 (Basements), L1-L15 (Levels), MZ (Mezzanine)
+The format is: 4 digits - floor code - zone number - location name
+Floor codes: GF=Ground Floor, RF=Rooftop, B1-B5=Basements, L1-L15=Levels, LG=Lower Ground, UG=Underground, MZ=Mezzanine
 
-Examples of valid codes:
-- 1234-GF-039
-- 5678-L5-LOBBY  
-- 9012-B2-001
-- 3456-RF-002
-- 2200-L10-SERVER
+Real examples from this exact type of panel:
+4619-GF-008-BABY CHANGING ROOM
+1234-L5-012-SERVER ROOM
+5678-B2-003-CAR PARK
+9012-RF-001-PLANT ROOM
 
-Rules:
-1. Return ONLY the code, nothing else
-2. Do not add any explanation or punctuation
-3. If you see multiple codes, return only the most prominent/largest one
-4. Use dash (-) as separator between parts
-5. If no valid code found, return exactly: NONE`
+Instructions:
+1. Focus on the bright green LCD screen text only
+2. Read the FIRST LINE of text on that screen
+3. Return that first line exactly as written including dashes and location name
+4. Even if image is slightly blurry, attempt to read the green glowing text
+5. Return ONLY that code line, absolutely nothing else, no explanation
+6. If you truly cannot read anything at all return: NONE`
             },
             {
               inline_data:{
@@ -295,8 +304,8 @@ Rules:
           ]
         }],
         generationConfig:{
-          temperature:0,      // 0 = most deterministic, no hallucination
-          maxOutputTokens:20  // code is short, force short response
+          temperature:0,
+          maxOutputTokens:50
         }
       })
     });
@@ -340,7 +349,7 @@ function showResult(p){
   document.getElementById('chips').innerHTML=`
     <div class="chip"><div class="cv">${p.bld}</div><div class="cl">Building</div></div>
     ${p.floor?`<div class="chip"><div class="cv">${p.floor}</div><div class="cl">${p.fn}</div></div>`:''}
-    ${p.room?`<div class="chip"><div class="cv">${p.room}</div><div class="cl">Room/Zone</div></div>`:''}
+    ${p.location?`<div class="chip"><div class="cv" style="font-size:.85em;letter-spacing:1px">${p.location}</div><div class="cl">Location</div></div>`:(p.room?`<div class="chip"><div class="cv">${p.room}</div><div class="cl">Zone</div></div>`:'')}
   `;
   window.scrollTo({top:document.getElementById('rcard').offsetTop-70,behavior:'smooth'});
 }
