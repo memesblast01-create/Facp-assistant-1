@@ -17,45 +17,37 @@ body{font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);min-he
 .hdr h1{font-size:1.25em;color:var(--g);letter-spacing:3px;text-transform:uppercase;font-weight:700}
 .badge{background:var(--gd);border:1px solid var(--gb);border-radius:20px;padding:4px 10px;font-size:0.68em;color:var(--g);letter-spacing:1px;font-family:'Share Tech Mono',monospace}
 
-/* CAMERA */
 #camBox{position:relative;width:100%;background:#000;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 #vid{width:100%;max-height:62vh;object-fit:cover;display:block}
 #capCvs{display:none}
 
-/* Guide overlay */
 #guide{position:absolute;inset:0;pointer-events:none;display:none;flex-direction:column;align-items:center;justify-content:center}
 .gframe{position:relative;width:78%;max-width:300px;height:80px}
-.gframe .c{position:absolute;width:22px;height:22px;border-color:var(--g);border-style:solid}
+.gc{position:absolute;width:22px;height:22px;border-color:var(--g);border-style:solid}
 .tl{top:0;left:0;border-width:3px 0 0 3px}
 .tr{top:0;right:0;border-width:3px 3px 0 0}
 .bl{bottom:0;left:0;border-width:0 0 3px 3px}
 .br{bottom:0;right:0;border-width:0 3px 3px 0}
 .gline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);animation:gl 2s ease-in-out infinite}
 @keyframes gl{0%{top:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:100%;opacity:0}}
-.gtxt{margin-top:12px;font-family:'Share Tech Mono',monospace;font-size:0.7em;color:var(--g);letter-spacing:2px;background:rgba(0,0,0,0.7);padding:5px 14px;border-radius:20px;border:1px solid var(--gb)}
+.gtxt{margin-top:12px;font-family:'Share Tech Mono',monospace;font-size:0.7em;color:var(--g);letter-spacing:2px;background:rgba(0,0,0,0.75);padding:5px 14px;border-radius:20px;border:1px solid var(--gb)}
 
-/* placeholder */
 #ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--m);padding:30px;text-align:center;background:#000}
 #ph i{font-size:3.5em;color:var(--gb)}
 #ph p{font-size:0.86em;letter-spacing:1px;line-height:1.9}
 
-/* BUTTONS */
 .btns{display:flex;gap:10px;padding:12px 16px;background:var(--d2);border-bottom:1px solid rgba(255,255,255,0.05)}
 .btn{flex:1;padding:14px;border:none;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:1em;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s}
 .bg{background:var(--g);color:#000}.bg:active{opacity:.75}.bg:disabled{opacity:.3;cursor:not-allowed}
-.bo{background:var(--d3);color:var(--g);border:1px solid var(--gb)}.bo:active{background:var(--gd)}.bo:disabled{opacity:.3;cursor:not-allowed}
+.bo{background:var(--d3);color:var(--g);border:1px solid var(--gb)}.bo:active{background:var(--gd)}
 
-/* PROCESSING */
 #proc{display:none;padding:26px 20px;text-align:center;background:var(--d2);border-bottom:1px solid var(--gb)}
 .ring{width:52px;height:52px;border:3px solid var(--gd);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
 #procMsg{color:var(--g);font-family:'Share Tech Mono',monospace;font-size:.82em;letter-spacing:2px}
 #procSub{color:var(--m);font-size:.72em;margin-top:6px;font-family:'Share Tech Mono',monospace;letter-spacing:1px}
 
-/* CONTENT */
 .wrap{padding:14px 16px}
-
-/* result */
 .rcard{background:var(--d2);border:1px solid var(--gb);border-radius:14px;overflow:hidden;margin-bottom:14px;display:none}
 .rcard.on{display:block}
 .rch{padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);display:flex;align-items:center;justify-content:space-between}
@@ -75,10 +67,6 @@ body{font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);min-he
 .nmatch{text-align:center;color:var(--m);padding:22px 14px;font-size:.85em;letter-spacing:1px;line-height:2}
 .errmsg{background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.25);border-radius:10px;padding:14px;color:#f66;font-size:.82em;letter-spacing:1px;line-height:1.8;margin-bottom:12px;font-family:'Share Tech Mono',monospace}
 
-/* RAW OCR box */
-.rawbox{background:var(--d3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-family:'Share Tech Mono',monospace;font-size:.72em;color:var(--m);letter-spacing:.5px;line-height:1.6;word-break:break-all}
-
-/* history */
 .hcard{background:var(--d2);border:1px solid var(--gb);border-radius:14px;overflow:hidden}
 .hch{padding:11px 16px;background:var(--gd);border-bottom:1px solid var(--gb);display:flex;align-items:center;justify-content:space-between}
 .hch span{color:var(--g);font-size:.82em;letter-spacing:2px;text-transform:uppercase;font-weight:600}
@@ -104,39 +92,36 @@ body{font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);min-he
   <div class="badge" id="dbBadge">Loading...</div>
 </div>
 
-<!-- CAMERA -->
 <div id="camBox">
   <div id="ph">
     <i class="fas fa-camera-retro"></i>
     <p>Tap <strong style="color:var(--g)">OPEN CAMERA</strong><br>
-    Align the panel label inside the frame<br>
-    then tap <strong style="color:var(--g)">SCAN CODE</strong></p>
+    Hold phone steady, align the code label<br>
+    inside the green frame, then tap<br>
+    <strong style="color:var(--g)">SCAN CODE</strong></p>
   </div>
   <video id="vid" autoplay playsinline muted style="display:none"></video>
   <canvas id="capCvs"></canvas>
   <div id="guide">
     <div class="gframe">
-      <div class="c tl"></div><div class="c tr"></div>
-      <div class="c bl"></div><div class="c br"></div>
+      <div class="gc tl"></div><div class="gc tr"></div>
+      <div class="gc bl"></div><div class="gc br"></div>
       <div class="gline"></div>
     </div>
     <div class="gtxt">ALIGN CODE LABEL HERE</div>
   </div>
 </div>
 
-<!-- PROCESSING -->
 <div id="proc">
   <div class="ring"></div>
-  <div id="procMsg">SENDING TO GEMINI AI...</div>
-  <div id="procSub">Reading panel code...</div>
+  <div id="procMsg">ANALYZING IMAGE...</div>
+  <div id="procSub">Gemini AI reading panel code...</div>
 </div>
 
-<!-- BUTTONS -->
 <div class="btns" id="btnRow">
   <button class="btn bg" onclick="openCam()"><i class="fas fa-camera"></i> Open Camera</button>
 </div>
 
-<!-- CONTENT -->
 <div class="wrap">
   <div class="rcard" id="rcard">
     <div class="rch">
@@ -171,10 +156,10 @@ body{font-family:'Rajdhani',sans-serif;background:var(--d);color:var(--t);min-he
 </div>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────
-// Get your FREE Gemini API key from: https://aistudio.google.com/app/apikey
-const GEMINI_KEY = "AIzaSyAbbNHlPkjTr-KwlgNyMTUwa5C-k1ZNEb4";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_KEY;
+// ── CONFIG — only change this one line ───────────────────────────
+// Paste your Cloudflare Worker URL here (no API key needed here!)
+const WORKER_URL = "https://facpscanner.memesblast01.workers.dev/";
+// Example: "https://facp-scanner.yourname.workers.dev"
 
 // ── FIREBASE ──────────────────────────────────────────────────────
 const FC={apiKey:"AIzaSyBhl-CLh7kaVklb22FAHTUPDaPKDaZm19M",authDomain:"facp-assistant.firebaseapp.com",projectId:"facp-assistant",storageBucket:"facp-assistant.firebasestorage.app",messagingSenderId:"771947694967",appId:"1:771947694967:web:4784fd12ab43dfec6c2f72"};
@@ -200,12 +185,16 @@ const fname=c=>FM[c.toUpperCase()]||c.toUpperCase();
 // ── CODE PARSER ───────────────────────────────────────────────────
 function parseCode(raw){
   let t=raw.toUpperCase().replace(/[^A-Z0-9\-\/\s]/g,' ').replace(/\s+/g,' ').trim();
+  // Pattern 1: 1234-GF-039
   const m1=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\s*[-\/\s]\s*([A-Z0-9][A-Z0-9\s]{0,25})/);
   if(m1)return{bld:m1[1],floor:m1[2],room:m1[3].trim(),full:`${m1[1]}-${m1[2]}-${m1[3].trim()}`,fn:fname(m1[2])};
+  // Pattern 2: 1234GF039
   const m2=t.match(/(\d{4})(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})([A-Z0-9]+)/);
   if(m2)return{bld:m2[1],floor:m2[2],room:m2[3],full:`${m2[1]}-${m2[2]}-${m2[3]}`,fn:fname(m2[2])};
+  // Pattern 3: 1234-GF only
   const m3=t.match(/(\d{4})\s*[-\/\s]\s*(GF|RF|RG|UG|LG|MZ|[BLP]\d{1,2}|[GL]\d{1,2})\b/);
   if(m3)return{bld:m3[1],floor:m3[2],room:null,full:`${m3[1]}-${m3[2]}`,fn:fname(m3[2])};
+  // Pattern 4: just 4 digits
   const m4=t.match(/\b(\d{4})\b/);
   if(m4)return{bld:m4[1],floor:null,room:null,full:m4[1],fn:null};
   return null;
@@ -226,7 +215,7 @@ async function openCam(){
       <button class="btn bg" id="scanBtn" onclick="doScan()"><i class="fas fa-crosshairs"></i> Scan Code</button>
     `;
   }catch(e){
-    alert('Camera error: '+e.message+'\n\nPlease allow camera permission and try again.');
+    alert('Camera error: '+e.message+'\n\nPlease allow camera permission.');
   }
 }
 
@@ -241,50 +230,61 @@ function closeCam(){
 // ── SCAN ──────────────────────────────────────────────────────────
 async function doScan(){
   const v=document.getElementById('vid');
-  if(!v.videoWidth){alert('Camera not ready, please wait a second');return;}
+  if(!v.videoWidth){alert('Camera not ready, wait a second and try again');return;}
 
-  // Capture photo
+  // Check worker URL configured
+  if(WORKER_URL==="YOUR_CLOUDFLARE_WORKER_URL_HERE"){
+    alert('Please set up your Cloudflare Worker first!\n\nSee the setup instructions.');
+    return;
+  }
+
+  // Capture frame
   const cvs=document.getElementById('capCvs');
   cvs.width=v.videoWidth; cvs.height=v.videoHeight;
   cvs.getContext('2d').drawImage(v,0,0);
 
-  // Save original color photo to gallery
-  const colorPhoto=cvs.toDataURL('image/jpeg',0.92);
-  saveGallery(colorPhoto);
+  // Save to gallery
+  saveGallery(cvs.toDataURL('image/jpeg',0.92));
 
   // Close camera
   closeCam();
 
   // Show processing
   document.getElementById('proc').style.display='block';
-  setProc('SENDING TO GEMINI AI...','Analyzing image...');
+  setProc('SENDING TO GEMINI AI...','Reading panel label...');
 
-  // Convert to base64 for Gemini (resize to max 800px wide to save bandwidth)
-  const resized=resizeImage(cvs,800);
-  const b64=resized.split(',')[1];
+  // Resize image to reduce data size (800px max)
+  const b64=resizeToB64(cvs,800);
 
   try{
-    // Check API key
-    if(GEMINI_KEY==="YOUR_GEMINI_API_KEY_HERE"){
-      document.getElementById('proc').style.display='none';
-      showError('⚠️ Gemini API key not set!\n\nPlease get a free key from:\nhttps://aistudio.google.com/app/apikey\n\nThen replace YOUR_GEMINI_API_KEY_HERE in the code.');
-      return;
-    }
-
-    setProc('GEMINI READING IMAGE...','This takes 2-4 seconds...');
-
-    const response=await fetch(GEMINI_URL,{
+    const response=await fetch(WORKER_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{
           parts:[
             {
-              text:`Look at this image carefully. Find any building/FACP panel code that follows this pattern: 4 digits followed by a floor code (like GF=Ground Floor, RF=Rooftop, B1=Basement 1, L1-L15=Level 1-15, etc.) followed by a room number or name.
+              // Very specific prompt — tells Gemini exactly what pattern to find
+              text:`This is a photo of a building FACP panel label or sticker.
 
-Examples of valid codes: 1234-GF-039, 5678-L5-LOBBY, 9012-B2-001, 3456-RF-002
+Your ONLY job is to find and return the building code from this image.
 
-Return ONLY the code you find, nothing else. If you see multiple codes return the most prominent one. If no code found, return: NONE`
+The code format is ALWAYS: 4 digits, then a floor code, then a room number or name.
+Floor codes are: GF (Ground Floor), RF (Rooftop), B1-B5 (Basements), L1-L15 (Levels), MZ (Mezzanine)
+
+Examples of valid codes:
+- 1234-GF-039
+- 5678-L5-LOBBY  
+- 9012-B2-001
+- 3456-RF-002
+- 2200-L10-SERVER
+
+Rules:
+1. Return ONLY the code, nothing else
+2. Do not add any explanation or punctuation
+3. If you see multiple codes, return only the most prominent/largest one
+4. Use dash (-) as separator between parts
+5. If no valid code found, return exactly: NONE`
             },
             {
               inline_data:{
@@ -294,44 +294,42 @@ Return ONLY the code you find, nothing else. If you see multiple codes return th
             }
           ]
         }],
-        generationConfig:{temperature:0,maxOutputTokens:50}
+        generationConfig:{
+          temperature:0,      // 0 = most deterministic, no hallucination
+          maxOutputTokens:20  // code is short, force short response
+        }
       })
     });
 
     if(!response.ok){
-      const err=await response.json();
-      throw new Error(err.error?.message||'API request failed: '+response.status);
+      const err=await response.json().catch(()=>({}));
+      throw new Error('Worker error '+response.status+': '+(err.error?.message||'Unknown error'));
     }
 
     const data=await response.json();
-    const rawText=data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()||'';
-    console.log('Gemini response:',rawText);
+    const rawText=(data.candidates?.[0]?.content?.parts?.[0]?.text||'').trim();
+    console.log('Gemini said:', rawText);
 
     document.getElementById('proc').style.display='none';
 
-    if(!rawText||rawText==='NONE'||rawText.toUpperCase().includes('NONE')){
+    if(!rawText||rawText.toUpperCase()==='NONE'){
       document.getElementById('rcard').classList.add('on');
-      document.getElementById('chips').innerHTML='<div style="color:var(--m);font-size:.82em;letter-spacing:1px">No code detected in image</div>';
-      document.getElementById('mres').innerHTML='<div class="nmatch">Gemini could not find a panel code.<br><br>Make sure the label is clearly visible and well lit.<br><br>Or type the code manually above and tap <strong style="color:var(--g)">GO</strong></div>';
+      document.getElementById('chips').innerHTML='<div style="color:var(--m);font-size:.82em;letter-spacing:1px;padding:4px 0">⚠ No code found in image</div>';
+      document.getElementById('mres').innerHTML='<div class="nmatch">Gemini could not find a panel code.<br><br>Tips:<br>• Make sure the label is clearly visible<br>• Hold the phone steady<br>• Good lighting helps<br><br>Or type the code manually above and tap GO</div>';
       window.scrollTo({top:document.getElementById('rcard').offsetTop-70,behavior:'smooth'});
       return;
     }
 
-    // Parse the code Gemini found
     const parsed=parseCode(rawText);
-    if(parsed){
-      showResult(parsed);
-      searchDB(parsed);
-    }else{
-      // Gemini found something but parser can't break it down — use raw
-      const fallback={bld:rawText,floor:null,room:null,full:rawText,fn:null};
-      showResult(fallback);
-      searchDB(fallback);
-    }
+    showResult(parsed||{bld:rawText,floor:null,room:null,full:rawText,fn:null});
+    searchDB(parsed||{bld:rawText,floor:null,room:null,full:rawText,fn:null});
 
   }catch(e){
     document.getElementById('proc').style.display='none';
-    showError('Error: '+e.message);
+    document.getElementById('rcard').classList.add('on');
+    document.getElementById('chips').innerHTML='';
+    document.getElementById('mres').innerHTML=`<div class="errmsg">Error: ${e.message}<br><br>Check your Cloudflare Worker is running correctly.</div>`;
+    window.scrollTo({top:document.getElementById('rcard').offsetTop-70,behavior:'smooth'});
   }
 }
 
@@ -385,26 +383,23 @@ function resetAll(){
   document.getElementById('codeIn').value='';
 }
 
-function showError(msg){
-  document.getElementById('rcard').classList.add('on');
-  document.getElementById('chips').innerHTML='';
-  document.getElementById('mres').innerHTML=`<div class="errmsg">${msg.replace(/\n/g,'<br>')}</div>`;
-  window.scrollTo({top:document.getElementById('rcard').offsetTop-70,behavior:'smooth'});
-}
-
-// ── IMAGE RESIZE ──────────────────────────────────────────────────
-function resizeImage(srcCanvas,maxW){
-  const ratio=Math.min(1,maxW/srcCanvas.width);
+// ── HELPERS ───────────────────────────────────────────────────────
+function resizeToB64(canvas,maxW){
+  const ratio=Math.min(1,maxW/canvas.width);
   const c=document.createElement('canvas');
-  c.width=Math.floor(srcCanvas.width*ratio);
-  c.height=Math.floor(srcCanvas.height*ratio);
-  c.getContext('2d').drawImage(srcCanvas,0,0,c.width,c.height);
-  return c.toDataURL('image/jpeg',0.88);
+  c.width=Math.floor(canvas.width*ratio);
+  c.height=Math.floor(canvas.height*ratio);
+  c.getContext('2d').drawImage(canvas,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',0.88).split(',')[1];
 }
 
-// ── GALLERY ───────────────────────────────────────────────────────
 function saveGallery(d){
   try{const a=document.createElement('a');a.href=d;a.download='FACP_'+Date.now()+'.jpg';document.body.appendChild(a);a.click();document.body.removeChild(a);}catch(e){}
+}
+
+function setProc(msg,sub){
+  document.getElementById('procMsg').textContent=msg;
+  document.getElementById('procSub').textContent=sub;
 }
 
 // ── HISTORY ───────────────────────────────────────────────────────
@@ -439,11 +434,6 @@ function loadHist(i){
 function clrHist(){
   if(!confirm('Clear all scan history?'))return;
   localStorage.removeItem('facp_hist'); renderHist();
-}
-
-function setProc(msg,sub){
-  document.getElementById('procMsg').textContent=msg;
-  document.getElementById('procSub').textContent=sub;
 }
 
 renderHist();
