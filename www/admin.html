@@ -246,11 +246,19 @@ async function loadTable() {
     const snap = await db.collection("buildings").get();
     let rows = [];
 
+    // Split query into individual words — ALL words must appear somewhere in the record
+    const searchWords = searchQ ? searchQ.split(/\s+/).filter(w => w.length > 0) : [];
+
     snap.forEach(doc => {
       const item = doc.data();
-      const matches = !searchQ || Object.values(item).some(val =>
-        String(val || "").toLowerCase().includes(searchQ)
-      );
+      if (searchWords.length === 0) {
+        rows.push({ id: doc.id, data: item });
+        return;
+      }
+      // Combine all field values into one searchable string
+      const allValues = Object.values(item).map(v => String(v || "").toLowerCase()).join(" ");
+      // Every word must be found somewhere in the record
+      const matches = searchWords.every(word => allValues.includes(word));
       if (matches) rows.push({ id: doc.id, data: item });
     });
 
