@@ -21,202 +21,56 @@ body {
   padding: 20px;
   min-height: 100vh;
 }
-
 .footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  pointer-events: none;
+  position: fixed; bottom: 0; left: 0; width: 100%;
+  padding: 15px; display: flex; justify-content: center;
+  align-items: center; z-index: 1000; pointer-events: none;
 }
-
 .footer-content {
-  background: rgba(37, 211, 102, 0.2);
-  backdrop-filter: blur(5px);
-  padding: 8px 20px;
-  border-radius: 20px;
+  background: rgba(37, 211, 102, 0.2); backdrop-filter: blur(5px);
+  padding: 8px 20px; border-radius: 20px;
   border: 1px solid rgba(37, 211, 102, 0.5);
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  pointer-events: auto;
+  display: flex; align-items: center; gap: 15px; pointer-events: auto;
 }
-
-.footer p {
-  margin: 0;
-  font-size: 1em;
-  font-weight: bold;
-  color: #25D366;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
+.footer p { margin: 0; font-size: 1em; font-weight: bold; color: #25D366; text-transform: uppercase; letter-spacing: 1px; }
 .whatsapp-btn {
-  background: #25D366;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 20px;
-  text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s;
+  background: #25D366; color: white; width: 40px; height: 40px;
+  border-radius: 50%; display: flex; justify-content: center;
+  align-items: center; font-size: 20px; text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform 0.3s;
 }
-
-.whatsapp-btn:hover {
-  transform: scale(1.1);
-}
-
-.center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  flex-direction: column;
-}
-
-.box {
-  width: 90%;
-  max-width: 500px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 30px;
-  border-radius: 15px;
-  border: 1px solid #25D366;
-}
-
-h2 {
-  margin-bottom: 20px;
-  color: #25D366;
-}
-
-input, button, select {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: 1px solid #333;
-  background: #1a1a1a;
-  color: white;
-  font-size: 1em;
-}
-
-button {
-  background: #25D366;
-  color: black;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-}
-
-button:hover {
-  opacity: 0.9;
-}
-
+.whatsapp-btn:hover { transform: scale(1.1); }
+.center { display: flex; justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; }
+.box { width: 90%; max-width: 500px; background: rgba(0,0,0,0.7); padding: 30px; border-radius: 15px; border: 1px solid #25D366; }
+h2 { margin-bottom: 20px; color: #25D366; }
+input, button, select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; font-size: 1em; }
+button { background: #25D366; color: black; font-weight: bold; cursor: pointer; border: none; }
+button:hover { opacity: 0.9; }
 .hidden { display: none; }
-
-.dashboard {
-  max-width: 900px;
-  margin: 0 auto;
+.dashboard { max-width: 900px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #333; }
+.tab-btn { background: transparent; color: #aaa; border: none; padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab-btn.active { color: #25D366; border-bottom-color: #25D366; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { padding: 12px; border: 1px solid #333; text-align: left; }
+th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
+.danger { background: #ff4336; color: white; padding: 6px 12px; width: auto; }
+.danger:hover { background: #ff1744; }
+.logout-btn { background: #444; color: white; padding: 10px 20px; width: auto; }
+.zone-badge {
+  display: inline-block; background: rgba(37,211,102,0.15);
+  border: 1px solid rgba(37,211,102,0.4); color: #25D366;
+  border-radius: 12px; padding: 2px 10px; font-size: 0.8em;
+  margin-left: 6px; white-space: nowrap;
 }
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #333;
-}
-
-.tab-btn {
-  background: transparent;
-  color: #aaa;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-
-.tab-btn.active {
-  color: #25D366;
-  border-bottom-color: #25D366;
-}
-
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  padding: 12px;
-  border: 1px solid #333;
-  text-align: left;
-}
-
-th {
-  background: rgba(37, 211, 102, 0.1);
-  color: #25D366;
-}
-
-.danger {
-  background: #ff4336;
-  color: white;
-  padding: 6px 12px;
-  width: auto;
-}
-
-.danger:hover {
-  background: #ff1744;
-}
-
-.logout-btn {
-  background: #444;
-  color: white;
-  padding: 10px 20px;
-  width: auto;
-}
-
 @media (max-width: 600px) {
-  .box {
-    max-width: 100%;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  table {
-    font-size: 0.9em;
-  }
-
-  th, td {
-    padding: 8px;
-  }
+  .box { max-width: 100%; }
+  .header { flex-direction: column; align-items: flex-start; }
+  table { font-size: 0.9em; }
+  th, td { padding: 8px; }
 }
 </style>
 </head>
@@ -258,7 +112,7 @@ th {
         <button onclick="upload()">Upload File</button>
 
         <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
-          <input id="adminSearchInput" placeholder="Search data..." style="margin-top: 0; flex: 1;">
+          <input id="adminSearchInput" placeholder="Search data..." style="margin-top: 0; flex: 1;" onkeypress="if(event.key==='Enter') loadTable()">
           <button onclick="loadTable()" style="width:auto; padding:12px 20px; margin-top: 0;">Search</button>
         </div>
 
@@ -266,6 +120,8 @@ th {
           <button onclick="document.getElementById('adminSearchInput').value=''; loadTable()" style="width:auto; padding:8px 15px">Refresh</button>
           <button onclick="clearData()" class="danger" id="clearBtn" style="width:auto; padding:8px 15px; margin-left:10px">Clear All</button>
         </div>
+
+        <p id="resultCount" style="color:#aaa; font-size:0.85em; margin-top:10px;"></p>
 
         <table>
           <thead><tr><th>Details</th><th>Action</th></tr></thead>
@@ -332,37 +188,25 @@ try {
 async function login() {
   const email = document.getElementById("email").value.trim();
   const pass = document.getElementById("pass").value.trim();
-  
   if(!email || !pass) return alert("Enter email and password");
-
   try {
     await auth.signInWithEmailAndPassword(email, pass);
-    
     try {
       const userDoc = await db.collection("users").where("email", "==", email).get();
-      if(!userDoc.empty) {
-        currentUserRole = userDoc.docs[0].data().role;
-      }
-    } catch(e) {
-      currentUserRole = 'owner';
-    }
-    
+      if(!userDoc.empty) currentUserRole = userDoc.docs[0].data().role;
+    } catch(e) { currentUserRole = 'owner'; }
     showAdmin(email);
-  } catch(err) { 
-    alert("Login Failed: " + err.message);
-  }
+  } catch(err) { alert("Login Failed: " + err.message); }
 }
 
 function showAdmin(email) {
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("adminView").classList.remove("hidden");
   document.getElementById("userInfo").textContent = "Logged in as: " + email + " (" + currentUserRole.toUpperCase() + ")";
-  
   if(currentUserRole === 'subadmin') {
     document.getElementById("adminTabBtn").classList.add("hidden");
     document.getElementById("clearBtn").classList.add("hidden");
   }
-  
   loadTable();
   loadAdmins();
   loadNews();
@@ -375,15 +219,92 @@ function logout() {
 function switchTab(tab, btn) {
   document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
-  
   document.getElementById(tab + "Tab").classList.add("active");
   btn.classList.add("active");
+}
+
+// ─── Helper: extract zone value from a record ───────────────────────────────
+function getZoneValue(item) {
+  const zoneKey = Object.keys(item).find(k => k.toLowerCase().includes('zone'));
+  if (!zoneKey) return { raw: '', num: Infinity, str: '' };
+  const raw = String(item[zoneKey] || '').trim();
+  // Try to pull a leading number out (e.g. "Zone 2", "2", "Zone-3A")
+  const match = raw.match(/(\d+(\.\d+)?)/);
+  const num = match ? parseFloat(match[1]) : Infinity;
+  return { raw, num, str: raw.toLowerCase() };
+}
+
+// ─── FIXED loadTable: filters then sorts by zone ─────────────────────────────
+async function loadTable() {
+  const body = document.getElementById("dataBody");
+  const countEl = document.getElementById("resultCount");
+  const searchQ = document.getElementById("adminSearchInput").value.toLowerCase().trim();
+
+  body.innerHTML = "<tr><td colspan='2' style='color:#aaa;'>Loading...</td></tr>";
+
+  try {
+    const snap = await db.collection("buildings").get();
+    let rows = [];
+
+    snap.forEach(doc => {
+      const item = doc.data();
+      const matches = !searchQ || Object.values(item).some(val =>
+        String(val || "").toLowerCase().includes(searchQ)
+      );
+      if (matches) rows.push({ id: doc.id, data: item });
+    });
+
+    // ── Sort by zone (numeric first, then alphabetic) ──
+    rows.sort((a, b) => {
+      const zA = getZoneValue(a.data);
+      const zB = getZoneValue(b.data);
+      if (zA.num !== Infinity || zB.num !== Infinity) {
+        if (zA.num !== zB.num) return zA.num - zB.num;
+      }
+      return zA.str < zB.str ? -1 : zA.str > zB.str ? 1 : 0;
+    });
+
+    const total = rows.length;
+    const limited = rows.slice(0, 100);
+
+    if (countEl) {
+      countEl.textContent = searchQ
+        ? `Found ${total} result${total !== 1 ? 's' : ''} for "${searchQ}"${total > 100 ? ' (showing first 100)' : ''} — sorted by zone`
+        : `${total} total record${total !== 1 ? 's' : ''}${total > 100 ? ' (showing first 100)' : ''} — sorted by zone`;
+    }
+
+    let html = "";
+    limited.forEach(({ id, data: item }) => {
+      const zone = getZoneValue(item);
+      const zoneBadge = zone.raw ? `<span class="zone-badge">Zone: ${zone.raw}</span>` : '';
+      const details = Object.entries(item)
+        .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
+        .join(" | ");
+
+      html += `<tr>
+        <td>${details} ${zoneBadge}</td>
+        <td>
+          <div style="display:flex; gap:5px;">
+            <button onclick="editRecord('${id}', ${JSON.stringify(item).replace(/"/g, '&quot;')})"
+              style="width:auto; padding:6px 12px; background:#2196F3; color:white;">Edit</button>
+            ${currentUserRole === 'owner'
+              ? `<button class="danger" onclick="deleteRecord('${id}')" style="width:auto; padding:6px 12px;">Delete</button>`
+              : ''}
+          </div>
+        </td>
+      </tr>`;
+    });
+
+    body.innerHTML = html || "<tr><td colspan='2'>No records found</td></tr>";
+  } catch(e) {
+    console.error(e);
+    body.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
+  }
 }
 
 async function upload() {
   const file = document.getElementById("fileInput").files[0];
   if(!file) return alert("Select a file");
-
   const reader = new FileReader();
   reader.onload = async (e) => {
     let rows = [];
@@ -402,60 +323,19 @@ async function upload() {
           rows.push(obj);
         }
       }
-
       const batch = db.batch();
-      rows.forEach(row => {
-        batch.set(db.collection("buildings").doc(), row);
-      });
+      rows.forEach(row => { batch.set(db.collection("buildings").doc(), row); });
       await batch.commit();
-      
       const snap = await db.collection("buildings").get();
       const fireData = [];
       snap.forEach(doc => fireData.push(doc.data()));
       localStorage.setItem("facp_data", JSON.stringify(fireData));
-      
       alert("Uploaded " + rows.length + " records!");
       loadTable();
-    } catch(err) { 
-      alert("Error: " + err.message); 
-    }
+    } catch(err) { alert("Error: " + err.message); }
   };
   if(file.name.endsWith("xlsx")) reader.readAsBinaryString(file);
   else reader.readAsText(file);
-}
-
-async function loadTable() {
-  const body = document.getElementById("dataBody");
-  const searchQ = document.getElementById("adminSearchInput").value.toLowerCase().trim();
-  try {
-    let query = db.collection("buildings");
-    const snap = await query.get();
-    let html = "";
-    let count = 0;
-    
-    snap.forEach(doc => {
-      const item = doc.data();
-      const matches = !searchQ || Object.values(item).some(val => String(val || "").toLowerCase().includes(searchQ));
-      
-      if (matches && count < 100) {
-        const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(" | ");
-        html += `<tr>
-          <td>${details}</td>
-          <td>
-            <div style="display:flex; gap:5px;">
-              <button onclick="editRecord('${doc.id}', ${JSON.stringify(item).replace(/"/g, '&quot;')})" style="width:auto; padding:6px 12px; background:#2196F3; color:white;">Edit</button>
-              ${currentUserRole === 'owner' ? `<button class="danger" onclick="deleteRecord('${doc.id}')" style="width:auto; padding:6px 12px;">Delete</button>` : ''}
-            </div>
-          </td>
-        </tr>`;
-        count++;
-      }
-    });
-    body.innerHTML = html || "<tr><td colspan='2'>No records found</td></tr>";
-  } catch(e) {
-    console.error(e);
-    body.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
-  }
 }
 
 async function editRecord(id, currentData) {
@@ -466,26 +346,22 @@ async function editRecord(id, currentData) {
     await db.collection("buildings").doc(id).update(newData);
     alert("Updated successfully!");
     loadTable();
-  } catch(e) {
-    alert("Invalid JSON or Update Error: " + e.message);
-  }
+  } catch(e) { alert("Invalid JSON or Update Error: " + e.message); }
 }
 
 async function loadNews() {
   try {
     const doc = await db.collection("settings").doc("news").get();
-    if (doc.exists) {
-      document.getElementById("newsText").value = doc.data().text || "";
-    }
+    if (doc.exists) document.getElementById("newsText").value = doc.data().text || "";
   } catch(e) { console.error(e); }
 }
 
 async function updateNews() {
   const text = document.getElementById("newsText").value.trim();
   try {
-    await db.collection("settings").doc("news").set({ text });
+    await db.collection("settings").doc("news").set({ text }, { merge: true });
     alert("News updated!");
-  } catch(e) { alert("Error: " + e.message); }
+  } catch(e) { alert("Error: " + e.message + "\n\nPlease ensure your Firebase Security Rules allow writing to the 'settings' collection."); }
 }
 
 async function deleteRecord(id) {
@@ -514,28 +390,21 @@ async function clearData() {
 
 async function createAdmin() {
   if(currentUserRole !== 'owner') return alert("Only Owners can create admins");
-  
   const email = document.getElementById("newAdminEmail").value.trim();
   const pass = document.getElementById("newAdminPass").value.trim();
   const role = document.getElementById("newAdminRole").value;
-  
   if(!email || !pass) return alert("Enter email and password");
   if(pass.length < 6) return alert("Password must be at least 6 characters");
-
   try {
     const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
     const userCred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
     await secondaryApp.delete();
-
     await db.collection("users").doc(userCred.user.uid).set({ email, role });
-    
     alert("Admin created successfully!");
     document.getElementById("newAdminEmail").value = "";
     document.getElementById("newAdminPass").value = "";
     loadAdmins();
-  } catch(e) { 
-    alert("Error: " + e.message); 
-  }
+  } catch(e) { alert("Error: " + e.message); }
 }
 
 async function loadAdmins() {
@@ -552,9 +421,7 @@ async function loadAdmins() {
       </tr>`;
     });
     body.innerHTML = html || "<tr><td colspan='3'>No admins</td></tr>";
-  } catch(e) {
-    body.innerHTML = "<tr><td colspan='3'>Error loading admins</td></tr>";
-  }
+  } catch(e) { body.innerHTML = "<tr><td colspan='3'>Error loading admins</td></tr>"; }
 }
 
 async function deleteAdmin(id) {
