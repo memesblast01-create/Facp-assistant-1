@@ -265,16 +265,15 @@ async function loadTable() {
     });
 
     const total = rows.length;
-    const limited = rows.slice(0, 100);
 
     if (countEl) {
       countEl.textContent = searchQ
-        ? `Found ${total} result${total !== 1 ? 's' : ''} for "${searchQ}"${total > 100 ? ' (showing first 100)' : ''} — sorted by zone`
-        : `${total} total record${total !== 1 ? 's' : ''}${total > 100 ? ' (showing first 100)' : ''} — sorted by zone`;
+        ? `Found ${total} result${total !== 1 ? 's' : ''} for "${searchQ}" — sorted by zone`
+        : `${total} total record${total !== 1 ? 's' : ''} — sorted by zone`;
     }
 
     let html = "";
-    limited.forEach(({ id, data: item }) => {
+    rows.forEach(({ id, data: item }) => {
       const zone = getZoneValue(item);
       const zoneBadge = zone.raw ? `<span class="zone-badge">Zone: ${zone.raw}</span>` : '';
       const details = Object.entries(item)
