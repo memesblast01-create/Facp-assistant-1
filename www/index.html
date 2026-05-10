@@ -310,6 +310,7 @@ const firebaseConfig = {
 
 let buildingsData = [];
 let currentFilter = 'all';
+let unsubscribeNews = null; // track listener to clean it up
 
 function setFilter(filter, btn) {
   currentFilter = filter;
@@ -318,27 +319,68 @@ function setFilter(filter, btn) {
   performSearch();
 }
 
-window.onload = async () => {
+// Safe Firebase init — reuses existing app instead of crashing on double-init
+function getFirebaseApp() {
   try {
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    
-    // Load News
-    db.collection("settings").doc("news").onSnapshot(doc => {
-      if (doc.exists) {
-        document.getElementById("tickerContent").textContent = doc.data().text || "Welcome to FACP Assistant";
+    if (firebase.apps && firebase.apps.length > 0) {
+      return firebase.apps[0];
+    }
+    return firebase.initializeApp(firebaseConfig);
+  } catch (e) {
+    // "already exists" error — grab the existing app
+    return firebase.app();
+  }
+}
+
+window.onload = async () => {
+  // Load from cache immediately so UI is never blank
+  try {
+    const cached = localStorage.getItem("facp_data");
+    if (cached) buildingsData = JSON.parse(cached);
+  } catch (e) {}
+
+  try {
+    const app = getFirebaseApp();
+    const db = firebase.firestore(app);
+
+    // Clean up any existing listener before attaching a new one
+    if (unsubscribeNews) {
+      try { unsubscribeNews(); } catch (e) {}
+      unsubscribeNews = null;
+    }
+
+    // Attach news listener and store the unsubscribe handle
+    unsubscribeNews = db.collection("settings").doc("news").onSnapshot(
+      doc => {
+        if (doc.exists) {
+          const el = document.getElementById("tickerContent");
+          if (el) el.textContent = doc.data().text || "Welcome to FACP Assistant";
+        }
+      },
+      err => {
+        // Silently ignore — network drops, backgrounding, etc.
+        console.warn("News listener:", err.message);
       }
-    });
+    );
 
     const snap = await db.collection("buildings").get();
     const fireData = [];
     snap.forEach(doc => fireData.push(doc.data()));
     buildingsData = fireData;
     localStorage.setItem("facp_data", JSON.stringify(fireData));
-  } catch (e) { 
-    buildingsData = JSON.parse(localStorage.getItem("facp_data") || "[]");
+  } catch (e) {
+    console.warn("Firebase load failed, using cache:", e.message);
+    // buildingsData already set from cache above — no crash, no alert
   }
 };
+
+// Detach listener when leaving the page (back button, navigation, etc.)
+window.addEventListener("pagehide", () => {
+  if (unsubscribeNews) {
+    try { unsubscribeNews(); } catch (e) {}
+    unsubscribeNews = null;
+  }
+});
 
 function performSearch() {
   const q = document.getElementById("searchInput").value.toLowerCase().trim();
@@ -372,31 +414,29 @@ function performSearch() {
     results = [...exactMatches, ...partialMatches];
   }
 
+  // Deduplicate
+  const seen = new Set();
+  results = results.filter(item => {
+    const key = JSON.stringify(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   if (results.length === 0) {
     container.innerHTML = '<div class="no-results">No results found</div>';
     return;
   }
 
-  container.innerHTML = results.map(item => {
-    let codeKey = Object.keys(item).find(k => k.toLowerCase().includes('code')) || Object.keys(item)[0];
-    let codeValue = item[codeKey] || "N/A";
-
-    let detailsHtml = "";
-    Object.entries(item).forEach(([key, value]) => {
-      const lowKey = key.toLowerCase();
-      const isInternal = lowKey.includes('id') || lowKey.includes('created') || lowKey.includes('updated') || lowKey.includes('time') || lowKey.includes('date');
-      const isTimestamp = /^\d{10,15}$/.test(String(value));
-      
-      if (key === codeKey || isInternal || isTimestamp || !value || String(value).trim() === "") return;
-      
-      const label = key.replace(/_/g, ' ');
-      detailsHtml += `<div class="result-detail"><strong>${label}:</strong> ${value}</div>`;
-    });
+ container.innerHTML = results.map(item => {
+   const values = Object.entries(item)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, v]) => String(v || "").trim())
+      .filter(v => v !== "");
 
     return `
-      <div class="result-card">
-        <div class="result-code">${codeValue}</div>
-        ${detailsHtml}
+      <div class="result-card" style="text-align:center; border-left:none; border-bottom:2px solid #25D366; padding:12px;">
+        <div style="color:white; font-size:1em; font-weight:500;">${values.join(" - ")}</div>
       </div>
     `;
   }).join("");
