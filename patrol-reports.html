@@ -169,28 +169,18 @@ setMode('security');
 // then asks it to reformat the newly pasted raw text the same way.
 
 function buildSecurityPrompt(raw){
-  return `You are formatting Expo City Security patrol reports. You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*"). Rewrite it into a clean, consistent report using EXACTLY the structure and labels below. Fix typos, spelling, and grammar. Keep every factual detail, ticket/reference number (SR-, TN-, TK- codes) and name/contact exactly as given — never invent or drop information. Do not add commentary. Output plain text only, no markdown symbols like ** or #, no HTML.
+  return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
+S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
 
-TARGET FORMAT:
-Date: <date>
-Security Call Sign: <call sign>
-Patrol Type: <patrol type>
-Start Time: <start time>
-Location: <exact location>
+You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*"). Convert it into EXACTLY ONE LINE of output: the 9 column values in the order above, separated by a single TAB character between each value (not spaces, not commas — an actual tab character). Do not output a header row. Do not use any line breaks inside the line — everything must stay on one single line so it pastes into Excel as one row.
 
-Description of Activity / Finding(s):
-Description -
-<clean prose paragraph merging the "description of area patrolled" and "activity" notes into flowing sentences>
+Column rules:
+- S/N: always leave this EMPTY (it's filled in manually based on row position in the sheet).
+- Date, Security Call Sign, Patrol Type, Start Time, End Time, Location: short values, cleaned up.
+- Description of Activity / Finding(s): starts with "Description - " followed by a clean flowing paragraph combining the "description of area patrolled" and "activity" notes. Do NOT put the findings list here.
+- Remarks: starts with "Findings: " followed by the findings, each one numbered like "1) ... 2) ... 3) ..." run together on the same line (never on separate lines), keeping every SR-/TN-/TK- reference number exactly as given. After the findings, continue in the same cell with the general remarks sentence.
 
-Findings:
-- <finding 1, keep any SR/TN/TK reference numbers>
-- <finding 2>
-- (one bullet per finding, split run-on findings into separate bullets)
-
-Remarks:
-<clean prose paragraph from the remarks section>
-
-End Time: <end time>
+Fix typos, spelling, and grammar. Keep every factual detail, reference number, and name/contact exactly as given — never invent or drop information. Do not add commentary before or after the line. Output nothing except that single tab-separated line.
 
 WORKED EXAMPLE
 Raw input:
@@ -214,30 +204,12 @@ Most of the above issues are pending since there are no available materials for 
 **Security Call Sign:* F1
 """
 
-Correct output:
+Correct output (one line, tab-separated — shown here with |TAB| marking each tab for clarity, but your actual output must use real tab characters, not the text "|TAB|"):
 """
-Date: 04-07-2026
-Security Call Sign: F1
-Patrol Type: Initial Patrol
-Start Time: 06:02hrs
-Location: Firdaus Studio
-
-Description of Activity / Finding(s):
-Description -
-Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.
-
-Findings:
-- Main scoring door not properly fixed, issue still pending.
-- UPS device battery replacement still pending in the server room (TN-0633470).
-- Soap dispenser not working in the female washroom (TK-0012326).
-
-Remarks:
-Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.
-
-End Time: 06:55hrs
+|TAB|04-07-2026|TAB|F1|TAB|Initial Patrol|TAB|06:02hrs|TAB|Firdaus Studio|TAB|Description - Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.|TAB|Findings: 1) Main scoring door not properly fixed, issue still pending. 2) UPS device battery replacement still pending in the server room (TN-0633470). 3) Soap dispenser not working in the female washroom (TK-0012326). Remarks: Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.|TAB|06:55hrs
 """
 
-Now reformat this new raw input the same way:
+Now reformat this new raw input the same way, as one single tab-separated line, no header, no extra commentary:
 """
 ${raw}
 """`;
