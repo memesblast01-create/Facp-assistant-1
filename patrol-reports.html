@@ -172,15 +172,27 @@ function buildSecurityPrompt(raw){
   return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
 S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
 
-You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*"). Convert it into EXACTLY 9 lines of output, one column value per line, in the order above, with NOTHING else — no numbering, no labels, no header row, no blank lines between them, no commentary before or after. Line 1 will always be empty (the S/N column). It is critical that all 9 lines are present, even if a value is short — never skip or merge lines.
+You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*", multiple activity lines, and long bulleted findings lists). Convert it into a single JSON object with EXACTLY these 9 keys, in this order, and nothing else — no markdown, no code fences, no commentary:
 
-Column rules:
-- S/N: always leave this EMPTY (it's filled in manually based on row position in the sheet).
-- Date, Security Call Sign, Patrol Type, Start Time, End Time, Location: short values, cleaned up.
-- Description of Activity / Finding(s): starts with "Description - " followed by a clean flowing paragraph combining the "description of area patrolled" and "activity" notes. Do NOT put the findings list here.
-- Remarks: starts with "Findings: " followed by the findings, each one numbered like "1) ... 2) ... 3) ..." run together on the same line (never on separate lines), keeping every SR-/TN-/TK- reference number exactly as given. After the findings, continue in the same cell with the general remarks sentence.
+{
+  "sn": "",
+  "date": "",
+  "callSign": "",
+  "patrolType": "",
+  "startTime": "",
+  "location": "",
+  "description": "",
+  "remarks": "",
+  "endTime": ""
+}
 
-Fix typos, spelling, and grammar. Keep every factual detail, reference number, and name/contact exactly as given — never invent or drop information. Do not add commentary before or after the line. Output nothing except that single tab-separated line.
+Rules for each key:
+- "sn": always an empty string (filled in manually based on row position in the sheet).
+- "date", "callSign", "patrolType", "startTime", "location", "endTime": short clean values.
+- "description": starts with "Description - " followed by ONE flowing paragraph (no line breaks) combining the "description of area patrolled" AND every activity line into natural sentences. If there are several activity lines (different staff/contractors attending for different reasons), merge all of them into the paragraph — do not drop any. Do NOT put the findings list here.
+- "remarks": starts with "Findings: " followed by EVERY finding from the raw note, numbered "1) ... 2) ... 3) ..." and run together with no line breaks (all on one continuous string), keeping every SR-/TN-/TK- reference number exactly as given — never drop a finding even if there are many. After listing all findings, continue in the same string with the general remarks sentence from the raw note.
+
+Fix typos, spelling, and grammar throughout. Keep every factual detail, reference number, name, and contact exactly as given — never invent or drop information, no matter how long the raw note is. Every finding and every activity line in the raw input must appear somewhere in your output.
 
 WORKED EXAMPLE
 Raw input:
@@ -204,20 +216,10 @@ Most of the above issues are pending since there are no available materials for 
 **Security Call Sign:* F1
 """
 
-Correct output (exactly 9 lines, line 1 empty, nothing else added):
-"""
+Correct output:
+{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Description - Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.","remarks":"Findings: 1) Main scoring door not properly fixed, issue still pending. 2) UPS device battery replacement still pending in the server room (TN-0633470). 3) Soap dispenser not working in the female washroom (TK-0012326). Remarks: Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.","endTime":"06:55hrs"}
 
-04-07-2026
-F1
-Initial Patrol
-06:02hrs
-Firdaus Studio
-Description - Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.
-Findings: 1) Main scoring door not properly fixed, issue still pending. 2) UPS device battery replacement still pending in the server room (TN-0633470). 3) Soap dispenser not working in the female washroom (TK-0012326). Remarks: Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.
-06:55hrs
-"""
-
-Now reformat this new raw input the same way, as exactly 9 lines, no header, no extra commentary:
+Now reformat this new raw input the same way. Remember: include EVERY activity line and EVERY finding, no matter how many there are. Output ONLY the JSON object, nothing else:
 """
 ${raw}
 """`;
@@ -274,6 +276,36 @@ ${raw}
 }
 
 // ── GENERATE ─────────────────────────────────────────────────────────
+const SECURITY_KEYS = ['sn','date','callSign','patrolType','startTime','location','description','remarks','endTime'];
+const MAX_ATTEMPTS = 3;
+
+async function callWorker(prompt, useJsonMode){
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 3500
+    }
+  };
+  if(useJsonMode) body.generationConfig.responseMimeType = 'application/json';
+
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+
+  const rawRespText = await response.text();
+  let data;
+  try{ data = JSON.parse(rawRespText); }catch(e){ data = null; }
+
+  if(!response.ok){
+    throw new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
+  }
+
+  return { data, rawRespText };
+}
+
 async function generateReport(){
   const raw = document.getElementById('rawInput').value.trim();
   if(!raw){ alert('Paste the raw report text first.'); return; }
@@ -285,81 +317,78 @@ async function generateReport(){
 
   const prompt = mode === 'security' ? buildSecurityPrompt(raw) : buildContractorPrompt(raw);
 
-  try{
-    const response = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 3500
+  let lastDiag = '';
+
+  for(let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
+    try{
+      document.getElementById('procMsg').textContent = attempt === 1
+        ? 'Generating report...'
+        : `Retrying (attempt ${attempt} of ${MAX_ATTEMPTS})...`;
+
+      const { data, rawRespText } = await callWorker(prompt, mode === 'security');
+      const rawText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+      const finishReason = data?.candidates?.[0]?.finishReason;
+
+      if(!rawText){
+        const blockReason = data?.promptFeedback?.blockReason;
+        lastDiag = 'No text came back from the AI engine.\n';
+        if(blockReason) lastDiag += 'Blocked by safety filter: ' + blockReason + '\n';
+        if(finishReason) lastDiag += 'Finish reason: ' + finishReason + '\n';
+        lastDiag += 'Raw response:\n' + rawRespText.slice(0, 800);
+        continue; // retry
+      }
+
+      if(mode === 'security'){
+        const ok = tryRenderSecurityResult(rawText, finishReason);
+        if(ok){
+          document.getElementById('proc').style.display = 'none';
+          document.getElementById('genBtn').disabled = false;
+          window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
+          return;
         }
-      })
-    });
+        lastDiag = `Attempt ${attempt}: response wasn't valid/complete JSON.\nWhat came back:\n"""\n${rawText}\n"""`;
+        continue; // retry
+      } else {
+        lastReportText = rawText;
+        document.getElementById('outBox').textContent = rawText;
+        document.getElementById('outCard').style.display = 'block';
+        document.getElementById('proc').style.display = 'none';
+        document.getElementById('genBtn').disabled = false;
+        window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
+        return;
+      }
 
-    const rawRespText = await response.text();
-    let data;
-    try{ data = JSON.parse(rawRespText); }catch(e){ data = null; }
-
-    console.log('Worker response status:', response.status);
-    console.log('Worker response body:', rawRespText);
-
-    if(!response.ok){
-      throw new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
+    }catch(e){
+      lastDiag = 'Error: ' + e.message;
+      continue; // retry
     }
-
-    document.getElementById('proc').style.display = 'none';
-    document.getElementById('genBtn').disabled = false;
-
-    const rawText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-    const finishReason = data?.candidates?.[0]?.finishReason;
-
-    if(!rawText){
-      const blockReason = data?.promptFeedback?.blockReason;
-      let diag = 'No text came back from the AI engine.\n\n';
-      if(blockReason) diag += 'Blocked by safety filter: ' + blockReason + '\n\n';
-      if(finishReason) diag += 'Finish reason: ' + finishReason + '\n\n';
-      diag += 'Raw response (for debugging):\n' + rawRespText.slice(0, 800);
-      showError(diag);
-      return;
-    }
-
-    if(mode === 'security'){
-      renderSecurityResult(rawText, finishReason, rawRespText);
-    } else {
-      lastReportText = rawText;
-      document.getElementById('outBox').textContent = rawText;
-      document.getElementById('outCard').style.display = 'block';
-    }
-    window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
-
-  }catch(e){
-    document.getElementById('proc').style.display = 'none';
-    document.getElementById('genBtn').disabled = false;
-    showError('Error: ' + e.message);
   }
+
+  // All attempts exhausted
+  document.getElementById('proc').style.display = 'none';
+  document.getElementById('genBtn').disabled = false;
+  showError(`Tried ${MAX_ATTEMPTS} times and still couldn't get a complete report.\n\n${lastDiag}`);
+  window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
 }
 
 const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
 
-function renderSecurityResult(rawText, finishReason, rawRespText){
-  // Model was asked for exactly 9 lines. Strip any accidental blank lines
-  // at the very start/end, but keep internal structure intact.
-  let lines = rawText.split('\n');
-  while(lines.length && lines[0].trim() === '' && lines.length > 9) lines.shift();
-  while(lines.length && lines[lines.length-1].trim() === '' && lines.length > 9) lines.pop();
-
-  if(lines.length !== 9){
-    let diag = `Expected 9 fields but got ${lines.length}.\n`;
-    if(finishReason && finishReason !== 'STOP') diag += `Finish reason: ${finishReason} (this usually means the response got cut off — try again, or shorten the raw notes).\n`;
-    diag += `\nWhat came back:\n"""\n${rawText}\n"""\n\nRaw response (for debugging):\n${rawRespText.slice(0,800)}`;
-    showError(diag);
-    return;
+function tryRenderSecurityResult(rawText, finishReason){
+  // Strip accidental code fences some models add despite instructions
+  let cleaned = rawText.trim();
+  if(cleaned.startsWith('```')){
+    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   }
 
+  let obj;
+  try{ obj = JSON.parse(cleaned); }catch(e){ return false; }
+
+  const values = SECURITY_KEYS.map(k => (obj[k] ?? '').toString().trim());
+  const filledRequired = SECURITY_KEYS.slice(1).every((k,i) => values[i+1] !== ''); // all except sn must be non-empty
+  if(!filledRequired) return false;
+
   // Build the real tab-separated line for pasting into Excel
-  lastReportText = lines.join('\t');
+  lastReportText = values.join('\t');
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
@@ -375,14 +404,15 @@ function renderSecurityResult(rawText, finishReason, rawRespText){
     lbl.style.color = '#8a8a90';
     lbl.style.marginBottom = '2px';
     const val = document.createElement('div');
-    val.textContent = lines[i].trim() === '' ? '(empty)' : lines[i];
-    val.style.color = lines[i].trim() === '' ? '#b8b8bc' : '#1c1c1e';
+    val.textContent = values[i] === '' ? '(empty)' : values[i];
+    val.style.color = values[i] === '' ? '#b8b8bc' : '#1c1c1e';
     row.appendChild(lbl);
     row.appendChild(val);
     table.appendChild(row);
   });
   outBox.appendChild(table);
   document.getElementById('outCard').style.display = 'block';
+  return true;
 }
 
 function showError(msg){
