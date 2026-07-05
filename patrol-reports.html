@@ -172,7 +172,7 @@ function buildSecurityPrompt(raw){
   return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
 S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
 
-You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*"). Convert it into EXACTLY ONE LINE of output: the 9 column values in the order above, separated by a single TAB character between each value (not spaces, not commas — an actual tab character). Do not output a header row. Do not use any line breaks inside the line — everything must stay on one single line so it pastes into Excel as one row.
+You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*"). Convert it into EXACTLY 9 lines of output, one column value per line, in the order above, with NOTHING else — no numbering, no labels, no header row, no blank lines between them, no commentary before or after. Line 1 will always be empty (the S/N column). It is critical that all 9 lines are present, even if a value is short — never skip or merge lines.
 
 Column rules:
 - S/N: always leave this EMPTY (it's filled in manually based on row position in the sheet).
@@ -204,12 +204,20 @@ Most of the above issues are pending since there are no available materials for 
 **Security Call Sign:* F1
 """
 
-Correct output (one line, tab-separated — shown here with |TAB| marking each tab for clarity, but your actual output must use real tab characters, not the text "|TAB|"):
-"""
-|TAB|04-07-2026|TAB|F1|TAB|Initial Patrol|TAB|06:02hrs|TAB|Firdaus Studio|TAB|Description - Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.|TAB|Findings: 1) Main scoring door not properly fixed, issue still pending. 2) UPS device battery replacement still pending in the server room (TN-0633470). 3) Soap dispenser not working in the female washroom (TK-0012326). Remarks: Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.|TAB|06:55hrs
+Correct output (exactly 9 lines, line 1 empty, nothing else added):
 """
 
-Now reformat this new raw input the same way, as one single tab-separated line, no header, no extra commentary:
+04-07-2026
+F1
+Initial Patrol
+06:02hrs
+Firdaus Studio
+Description - Conducted the initial patrol throughout the entire building, covering both internal and external areas. All critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets were inspected, and everything was found in good condition except for the pending issues listed below. No activity was ongoing at the time of patrol. Emrill staff attended for an AC temperature reading and departed at 06:27hrs.
+Findings: 1) Main scoring door not properly fixed, issue still pending. 2) UPS device battery replacement still pending in the server room (TN-0633470). 3) Soap dispenser not working in the female washroom (TK-0012326). Remarks: Most of the above issues remain pending as there are no available materials for rectification, as advised by FM Management.
+06:55hrs
+"""
+
+Now reformat this new raw input the same way, as exactly 9 lines, no header, no extra commentary:
 """
 ${raw}
 """`;
@@ -285,7 +293,7 @@ async function generateReport(){
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 2048
+          maxOutputTokens: 3500
         }
       })
     });
@@ -304,12 +312,11 @@ async function generateReport(){
     document.getElementById('proc').style.display = 'none';
     document.getElementById('genBtn').disabled = false;
 
-    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    const rawText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    const finishReason = data?.candidates?.[0]?.finishReason;
 
-    if(!text){
-      // Surface the real reason instead of a generic message
+    if(!rawText){
       const blockReason = data?.promptFeedback?.blockReason;
-      const finishReason = data?.candidates?.[0]?.finishReason;
       let diag = 'No text came back from the AI engine.\n\n';
       if(blockReason) diag += 'Blocked by safety filter: ' + blockReason + '\n\n';
       if(finishReason) diag += 'Finish reason: ' + finishReason + '\n\n';
@@ -318,9 +325,13 @@ async function generateReport(){
       return;
     }
 
-    lastReportText = text;
-    document.getElementById('outBox').textContent = text;
-    document.getElementById('outCard').style.display = 'block';
+    if(mode === 'security'){
+      renderSecurityResult(rawText, finishReason, rawRespText);
+    } else {
+      lastReportText = rawText;
+      document.getElementById('outBox').textContent = rawText;
+      document.getElementById('outCard').style.display = 'block';
+    }
     window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
 
   }catch(e){
@@ -328,6 +339,50 @@ async function generateReport(){
     document.getElementById('genBtn').disabled = false;
     showError('Error: ' + e.message);
   }
+}
+
+const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
+
+function renderSecurityResult(rawText, finishReason, rawRespText){
+  // Model was asked for exactly 9 lines. Strip any accidental blank lines
+  // at the very start/end, but keep internal structure intact.
+  let lines = rawText.split('\n');
+  while(lines.length && lines[0].trim() === '' && lines.length > 9) lines.shift();
+  while(lines.length && lines[lines.length-1].trim() === '' && lines.length > 9) lines.pop();
+
+  if(lines.length !== 9){
+    let diag = `Expected 9 fields but got ${lines.length}.\n`;
+    if(finishReason && finishReason !== 'STOP') diag += `Finish reason: ${finishReason} (this usually means the response got cut off — try again, or shorten the raw notes).\n`;
+    diag += `\nWhat came back:\n"""\n${rawText}\n"""\n\nRaw response (for debugging):\n${rawRespText.slice(0,800)}`;
+    showError(diag);
+    return;
+  }
+
+  // Build the real tab-separated line for pasting into Excel
+  lastReportText = lines.join('\t');
+
+  // Build a readable label:value preview so you can check nothing is missing
+  const outBox = document.getElementById('outBox');
+  outBox.innerHTML = '';
+  const table = document.createElement('div');
+  SECURITY_COLUMNS.forEach((label, i) => {
+    const row = document.createElement('div');
+    row.style.marginBottom = '10px';
+    const lbl = document.createElement('div');
+    lbl.textContent = label;
+    lbl.style.fontWeight = '700';
+    lbl.style.fontSize = '0.8em';
+    lbl.style.color = '#8a8a90';
+    lbl.style.marginBottom = '2px';
+    const val = document.createElement('div');
+    val.textContent = lines[i].trim() === '' ? '(empty)' : lines[i];
+    val.style.color = lines[i].trim() === '' ? '#b8b8bc' : '#1c1c1e';
+    row.appendChild(lbl);
+    row.appendChild(val);
+    table.appendChild(row);
+  });
+  outBox.appendChild(table);
+  document.getElementById('outCard').style.display = 'block';
 }
 
 function showError(msg){
