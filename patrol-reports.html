@@ -169,10 +169,18 @@ setMode('security');
 // then asks it to reformat the newly pasted raw text the same way.
 
 function buildSecurityPrompt(raw){
+  const now = new Date();
+  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
+
   return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
 S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
 
-You will be given a rough, informal raw patrol note (often written on WhatsApp with inconsistent bold markers like "**Date:*", multiple activity lines, and long bulleted findings lists). Convert it into a single JSON object with EXACTLY these 9 keys, in this order, and nothing else — no markdown, no code fences, no commentary:
+Raw patrol notes come in different styles each time — sometimes labeled fields like "**Date:*", sometimes plain prose, sometimes everything as bullet points with no explicit field labels at all, sometimes different section names. Read for INTENT, not exact wording: figure out what is the general description of the patrol/area, what are activities, and what are findings/pending issues/observations, regardless of how they're formatted or labeled in the raw text, then map them into the correct fields below.
+
+CURRENT DATE/TIME (only use this if the raw note genuinely doesn't state a date, start time, or end time — never override a value that IS given in the raw note): Date ${todayDate}, Time ${nowTime}.
+
+Convert it into a single JSON object with EXACTLY these 9 keys, in this order, and nothing else — no markdown, no code fences, no commentary:
 
 {
   "sn": "",
@@ -188,9 +196,11 @@ You will be given a rough, informal raw patrol note (often written on WhatsApp w
 
 Rules for each key:
 - "sn": always an empty string (filled in manually based on row position in the sheet).
-- "date", "callSign", "patrolType", "startTime", "location", "endTime": short clean values.
-- "description": starts with "Description - " followed by ONLY the "description of the area patrolled" text from the raw note, cleaned up (fix typos/grammar only) but otherwise kept CLOSE TO THE ORIGINAL WORDING. Do NOT include anything from the activity lines here. Do not add descriptive language, adjectives, or explanation that isn't already in that one section of the raw note.
-- "remarks": starts with "Findings: " followed by EVERY finding, numbered "1) ... 2) ... 3) ..." run together with no line breaks. Each finding must be cut down to its SHORTEST possible form — just the core fact plus its reference number, strip every filler word (e.g. "Main scoring door handle not properly fixed, pending." not "Main scoring door handle not properly fixed. Issue is still pending."). Never drop a finding, but keep each one as short as it can possibly be. After listing all findings, add the general remarks sentence, kept equally short.
+- "date": use the date stated in the raw note. If genuinely not stated, use the current date given above — never leave this blank.
+- "callSign", "patrolType", "location": short clean values from the raw note. If genuinely not stated and cannot be reasonably inferred from context, leave blank.
+- "startTime", "endTime": use the times stated in the raw note. If genuinely not stated, use the current time given above — never leave these blank.
+- "description": starts with "Description - " followed by a short paragraph covering whatever the raw note says about the general patrol/area (what was checked, general condition, routine notes) — even if the raw note presents this as several separate points or bullets, merge them into ONE small flowing paragraph. Clean up wording (fix typos/grammar) but stay close to what's actually said — don't invent detail, don't add anything not present in the raw note. Do NOT include activity lines or specific findings/pending issues here, even if they were mixed in with the general notes in the raw text — those belong elsewhere.
+- "remarks": starts with "Findings: " followed by EVERY specific finding, pending issue, or notable observation from the raw note (whatever it calls them — findings, pending issues, new issues, observations), numbered "1) ... 2) ... 3) ..." run together with no line breaks. Each one must be cut down to its SHORTEST possible form — just the core fact plus its reference number if any, strip every filler word (e.g. "Main scoring door handle not properly fixed, pending." not "Main scoring door handle not properly fixed. Issue is still pending."). Never drop one, but keep each as short as it can possibly be. After listing all of them, add a short closing remarks sentence if the raw note has one.
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
