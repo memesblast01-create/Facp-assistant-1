@@ -197,10 +197,11 @@ Convert it into a single JSON object with EXACTLY these 9 keys, in this order, a
 Rules for each key:
 - "sn": always an empty string (filled in manually based on row position in the sheet).
 - "date": use the date stated in the raw note. If genuinely not stated, use the current date given above — never leave this blank.
-- "callSign", "patrolType", "location": short clean values from the raw note. If genuinely not stated and cannot be reasonably inferred from context, leave blank.
-- "startTime", "endTime": use the times stated in the raw note. If genuinely not stated, use the current time given above — never leave these blank.
-- "description": starts with "Description - " followed by a short paragraph covering whatever the raw note says about the general patrol/area (what was checked, general condition, routine notes) — even if the raw note presents this as several separate points or bullets, merge them into ONE small flowing paragraph. Clean up wording (fix typos/grammar) but stay close to what's actually said — don't invent detail, don't add anything not present in the raw note. Do NOT include activity lines or specific findings/pending issues here, even if they were mixed in with the general notes in the raw text — those belong elsewhere.
-- "remarks": starts with "Findings: " followed by EVERY specific finding, pending issue, or notable observation from the raw note (whatever it calls them — findings, pending issues, new issues, observations), numbered "1) ... 2) ... 3) ..." run together with no line breaks. Each one must be cut down to its SHORTEST possible form — just the core fact plus its reference number if any, strip every filler word (e.g. "Main scoring door handle not properly fixed, pending." not "Main scoring door handle not properly fixed. Issue is still pending."). Never drop one, but keep each as short as it can possibly be. After listing all of them, add a short closing remarks sentence if the raw note has one.
+- "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
+- "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
+- "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above — never leave these blank.
+- "description": starts with "Description - " followed by a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." Merge everything routine into ONE small, tight paragraph. Clean up wording but stay close to what's said — don't invent detail.
+- "remarks": starts with "Findings: " followed ONLY by genuine problems, pending issues, faults, damage, or anything that needs follow-up action (broken/not working/damaged/pending/faulty, or anything with a ticket/reference number like SR-/TN-/TK-/IR-). Use common sense to tell a real issue apart from a routine status note, regardless of what heading the raw note put it under. Number them "1) ... 2) ... 3) ..." run together with no line breaks, each cut to its shortest possible form (core fact + reference number if any). If the raw note genuinely has NO real issues (everything was fine, nothing pending, no tickets raised), write "Findings: None. All areas checked normal, no issues reported." — do not force routine observations into this field just to fill it. After listing genuine findings (if any), add a short closing remarks sentence if the raw note has one.
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
@@ -231,7 +232,30 @@ Most of the above issues are pending since there are no available materials for 
 Correct output:
 {"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Description - Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","remarks":"Findings: 1) Main scoring door not properly fixed, pending. 2) UPS battery replacement pending in server room (TN-0633470). 3) Soap dispenser not working in female washroom (TK-0012326). Remarks: Above issues pending due to unavailable materials for rectification, as per FM Management.","endTime":"06:55hrs"}
 
-Now reformat this new raw input the same way. Description = only the description-of-area text, nothing from activity lines. Keep every finding but each one as short as possible. Output ONLY the JSON object, nothing else:
+SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not remarks:
+Raw input:
+"""
+Date: 08/07/2026
+Location: Sky Avenue
+Subject: Final Patrol Report
+Description:
+Following a routine patrol around Sky Avenue Concourse, all structural shades, common areas, and designated smoking zones were inspected, everything found in satisfactory condition.
+Observations:
+* The Karak Break Shop is still open for visitors.
+* All assembly points are clear and accessible.
+* No medical emergencies have been reported.
+* Visitor traffic was minimal.
+* All LED advertising screens are functioning well and are currently turned on.
+* Pole lights remain turned off.
+Overall, Sky Avenue Concourse appears calm and well-organized.
+Respectfully,
+S-313
+"""
+
+Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and remarks says none found:
+{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Description - Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","remarks":"Findings: None. All areas checked normal, no issues reported.","endTime":""}
+
+Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. Remarks = only genuine issues (or "None" if there aren't any), each as short as possible. Output ONLY the JSON object, nothing else:
 """
 ${raw}
 """`;
