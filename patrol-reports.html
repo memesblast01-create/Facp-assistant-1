@@ -320,23 +320,40 @@ async function callWorker(prompt, useJsonMode){
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 3500
+      maxOutputTokens: 1500
     }
   };
   if(useJsonMode) body.generationConfig.responseMimeType = 'application/json';
 
-  const response = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s cap
+
+  let response;
+  try{
+    response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  }catch(e){
+    if(e.name === 'AbortError'){
+      throw new Error('The AI engine took too long to respond (over 40s) and the request was cancelled. This usually means the model is overloaded — try again in a moment.');
+    }
+    throw e;
+  }finally{
+    clearTimeout(timeoutId);
+  }
 
   const rawRespText = await response.text();
   let data;
   try{ data = JSON.parse(rawRespText); }catch(e){ data = null; }
 
   if(!response.ok){
-    throw new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
+    const isRateLimit = response.status === 429 || data?.error?.status === 'RESOURCE_EXHAUSTED';
+    const err = new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
+    err.isRateLimit = isRateLimit;
+    throw err;
   }
 
   return { data, rawRespText };
@@ -395,6 +412,12 @@ async function generateReport(){
       }
 
     }catch(e){
+      if(e.isRateLimit){
+        document.getElementById('proc').style.display = 'none';
+        document.getElementById('genBtn').disabled = false;
+        showError("You've hit the free Gemini API quota (20 requests) for your Cloudflare Worker's key. This isn't a bug — Google is rate-limiting the key itself. Wait a minute and try again, or upgrade the Google AI Studio billing plan on that API key for a higher limit.\n\nDetails: " + e.message);
+        return;
+      }
       lastDiag = 'Error: ' + e.message;
       continue; // retry
     }
