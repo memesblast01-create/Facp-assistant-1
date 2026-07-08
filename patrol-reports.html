@@ -384,10 +384,16 @@ function tryRenderSecurityResult(rawText, finishReason){
 
   let obj;
   try{ obj = JSON.parse(cleaned); }catch(e){ return false; }
+  if(!obj || typeof obj !== 'object') return false;
+
+  // Only require the two content fields to be present — short fields
+  // like startTime/endTime/callSign can legitimately be blank if the
+  // raw note didn't include them.
+  const description = (obj.description ?? '').toString().trim();
+  const remarks = (obj.remarks ?? '').toString().trim();
+  if(!description || !remarks) return false;
 
   const values = SECURITY_KEYS.map(k => (obj[k] ?? '').toString().trim());
-  const filledRequired = SECURITY_KEYS.slice(1).every((k,i) => values[i+1] !== ''); // all except sn must be non-empty
-  if(!filledRequired) return false;
 
   // Build the real tab-separated line for pasting into Excel
   lastReportText = values.join('\t');
