@@ -376,6 +376,15 @@ function tryRenderSecurityResult(rawText, finishReason){
   if(values[3] === '') values[3] = 'Not specified';
   if(values[5] === '') values[5] = 'Not specified';
 
+  // Defensively strip any stray line breaks the model might sneak in —
+  // only OUR intentional <br> should control spacing, never the model's.
+  for(let i=0;i<values.length;i++){
+    values[i] = values[i].replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+  const cleanIssues = issues.map(x => x.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim());
+  issues.length = 0;
+  issues.push(...cleanIssues);
+
   const descriptionText = values[6];
   const issuesText = issues.length
     ? issues.map((x,i) => `${i+1}. ${x}`).join('\n')
