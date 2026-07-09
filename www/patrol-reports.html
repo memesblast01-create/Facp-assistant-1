@@ -160,7 +160,7 @@ Convert it into a single JSON object with EXACTLY these 9 keys, in this order, a
   "startTime": "",
   "location": "",
   "description": "",
-  "remarks": "",
+  "issues": [],
   "endTime": ""
 }
 
@@ -171,11 +171,11 @@ Rules for each key:
 - "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
 - "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above — never leave these blank.
 - "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too. ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
-- "remarks": starts with "Findings: " followed ONLY by genuine problems, pending issues, faults, damage, or anything that needs follow-up action (broken/not working/damaged/pending/faulty, or anything with a ticket/reference number like SR-/TN-/TK-/IR-). Use common sense to tell a real issue apart from a routine status note, regardless of what heading the raw note put it under. Number them "1) ... 2) ... 3) ..." run together with no line breaks. SUMMARIZE EACH ONE AGGRESSIVELY — a short fragment, not a sentence: just the object + fault + reference number, drop location if already obvious from context, drop connecting words like "is", "has", "there is". E.g. write "Service lift Entrance-3 not working (SR-99673)" not "The service lift at entrance-3 is not working, reference SR.99673." If the raw note genuinely has NO real issues (everything was fine, nothing pending, no tickets raised), write "Findings: None. All areas checked normal, no issues reported." — do not force routine observations into this field just to fill it. After listing genuine findings (if any), add a short closing remarks sentence if the raw note has one.
+- "issues": an ARRAY of strings, one string per genuine issue. STRICT RULE — only include an issue here if it has an actual ticket/reference number attached in the raw note (SR-, TN-, TK-, IR-, or similar). If a problem is mentioned but has NO reference number at all (e.g. "no SR shared", "no ticket raised", or just no number given), DO NOT include it in this array at all — leave it out completely, do not even mention it. Do not include recurring "still pending from before" phrasing or a general closing remarks sentence — this array is ONLY the current ticketed issues, nothing else, no summary line at the end. Each string should be a short fragment (not a sentence): object + fault + reference number, e.g. "Service lift Entrance-3 not working (SR-99673)". Drop connecting words like "is", "has", "there is". If there are genuinely no issues with a reference number, use an empty array [].
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
-Fix typos, spelling, and grammar throughout. Keep every factual detail, reference number, name, and contact exactly as given — never invent or drop information, no matter how long the raw note is. Every finding and every activity line in the raw input must appear somewhere in your output.
+Fix typos, spelling, and grammar throughout. Keep every factual detail, reference number, name, and contact exactly as given — never invent or drop information, no matter how long the raw note is. Every activity line and every ticketed issue in the raw input must appear somewhere in your output.
 
 WORKED EXAMPLE
 Raw input:
@@ -193,16 +193,17 @@ No activity is going on at the moment.
 *Main scoring door not properly fixed. Issue is still pending.
 *UPS device battery replacement is still pending in the server room. TN 0633470.
 *Soap dispenser is not working in the female washroom. TK 0012326.
+*Bench light not working, no SR shared yet.
 **Remarks:*
 Most of the above issues are pending since there are no available materials for rectification as per FM Management.
 *End Time:* 06:55hrs
 **Security Call Sign:* F1
 """
 
-Correct output:
-{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","remarks":"Findings: 1) Main scoring door not fixed (pending). 2) UPS battery replacement pending, server room (TN-0633470). 3) Soap dispenser not working, female washroom (TK-0012326). Remarks: Above pending due to unavailable materials, per FM Management.","endTime":"06:55hrs"}
+Correct output — note the bench light finding has NO reference number, so it is left out of "issues" entirely, and the generic closing remarks sentence is dropped too:
+{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","issues":["Main scoring door not fixed (pending)","UPS battery replacement pending, server room (TN-0633470)","Soap dispenser not working, female washroom (TK-0012326)"],"endTime":"06:55hrs"}
 
-SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not remarks:
+SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not issues:
 Raw input:
 """
 Date: 08/07/2026
@@ -222,24 +223,25 @@ Respectfully,
 S-313
 """
 
-Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and remarks says none found:
-{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","remarks":"Findings: None. All areas checked normal, no issues reported.","endTime":""}
+Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and issues is empty:
+{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","issues":[],"endTime":""}
 
-CRITICAL — except "sn" (which always stays empty), every other field must have a value. Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
+CRITICAL — except "sn" (which always stays empty), every other field must have a value (issues can be an empty array, that's fine). Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
 
 CRITICAL — do not skip these, check them last before you answer:
 - callSign must NOT be left empty if the raw note has ANY name or code signing off the report — even if there's no label like "Call Sign" at all, a name/code sitting alone on the last line or after "Regards" still counts and must go in callSign.
 - date must never be empty — use the current date given above if the raw note doesn't state one.
 - startTime and endTime must never be empty — use the current time given above if the raw note doesn't state them, or split a combined range like "18:00-20:35hrs".
+- issues must NEVER include a problem that has no reference/ticket number — drop those entirely, don't mention them anywhere in issues.
 
-Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. Remarks = only genuine issues (or "None" if there aren't any), each as short as possible. Output ONLY the JSON object, nothing else:
+Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. issues = ONLY ticketed problems, each as short as possible, no ticket = don't include it. Output ONLY the JSON object, nothing else:
 """
 ${raw}
 """`;
 }
 
 // ── GENERATE ─────────────────────────────────────────────────────────
-const SECURITY_KEYS = ['sn','date','callSign','patrolType','startTime','location','description','remarks','endTime'];
+const SECURITY_KEYS = ['sn','date','callSign','patrolType','startTime','location','description','issues','endTime'];
 const MAX_ATTEMPTS = 3;
 
 async function callWorker(prompt, useJsonMode){
@@ -247,7 +249,7 @@ async function callWorker(prompt, useJsonMode){
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 3500
+      maxOutputTokens: 2200
     }
   };
   if(useJsonMode) body.generationConfig.responseMimeType = 'application/json';
@@ -325,6 +327,9 @@ async function generateReport(){
 }
 
 const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
+const TICKET_PATTERN = /\b(SR|TN|TK|IR)[\s.\-]?\d{3,}/i;
+
+let lastReportHtml = ''; // rich HTML version, used for the Excel clipboard paste
 
 function tryRenderSecurityResult(rawText, finishReason){
   // Strip accidental code fences some models add despite instructions
@@ -337,14 +342,23 @@ function tryRenderSecurityResult(rawText, finishReason){
   try{ obj = JSON.parse(cleaned); }catch(e){ return false; }
   if(!obj || typeof obj !== 'object') return false;
 
-  // Only require the two content fields to be present — short fields
-  // like startTime/endTime/callSign can legitimately be blank if the
-  // raw note didn't include them.
+  // Only require the description field — issues can legitimately be an
+  // empty array, and short fields like startTime/endTime/callSign get
+  // filled by the fallback below if the raw note didn't include them.
   const description = (obj.description ?? '').toString().trim();
-  const remarks = (obj.remarks ?? '').toString().trim();
-  if(!description || !remarks) return false;
+  if(!description) return false;
 
-  const values = SECURITY_KEYS.map(k => (obj[k] ?? '').toString().trim());
+  const rawIssues = Array.isArray(obj.issues) ? obj.issues : [];
+  // Defensive filter — drop any issue that doesn't actually contain a
+  // reference/ticket number, in case the model included one anyway.
+  const issues = rawIssues
+    .map(x => (x ?? '').toString().trim())
+    .filter(x => x && TICKET_PATTERN.test(x));
+
+  const values = SECURITY_KEYS.map(k => {
+    if(k === 'issues') return ''; // handled separately below
+    return (obj[k] ?? '').toString().trim();
+  });
 
   // Strip a leftover "Description - " / "Description:" prefix in case the model adds one anyway
   values[6] = values[6].replace(/^description\s*[-:]\s*/i, '').trim();
@@ -362,13 +376,42 @@ function tryRenderSecurityResult(rawText, finishReason){
   if(values[3] === '') values[3] = 'Not specified';
   if(values[5] === '') values[5] = 'Not specified';
 
-  // Build the real tab-separated line for pasting into Excel
-  lastReportText = values.join('\t');
+  const descriptionText = values[6];
+  const issuesText = issues.length
+    ? issues.map((x,i) => `${i+1}. ${x}`).join('\n')
+    : 'None';
+
+  // Plain-text fallback (used by older browsers / execCommand copy) —
+  // can't carry bold or true multi-line-in-cell, so pipes separate lines.
+  const plainDescription = 'Description | ' + descriptionText;
+  const plainIssues = 'Issues | ' + (issues.length ? issues.map((x,i) => `${i+1}. ${x}`).join(' | ') : 'None');
+  const plainValues = values.slice();
+  plainValues[6] = plainDescription;
+  plainValues[7] = plainIssues;
+  lastReportText = plainValues.join('\t');
+
+  // Rich HTML version — this is what actually gives real bold formatting
+  // and proper multi-line-within-a-cell when pasted into Excel.
+  const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const descCellHtml = `<b>Description</b><br>${escapeHtml(descriptionText)}`;
+  const issuesCellHtml = issues.length
+    ? `<b>Issues</b><br>${issues.map((x,i) => `<b>${i+1}.</b> ${escapeHtml(x)}`).join('<br>')}`
+    : `<b>Issues</b><br>None`;
+  const htmlValues = values.slice();
+  const tds = htmlValues.map((v,i) => {
+    if(i === 6) return `<td>${descCellHtml}</td>`;
+    if(i === 7) return `<td>${issuesCellHtml}</td>`;
+    return `<td>${escapeHtml(v)}</td>`;
+  });
+  lastReportHtml = `<table><tr>${tds.join('')}</tr></table>`;
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
   outBox.innerHTML = '';
   const table = document.createElement('div');
+  const previewValues = values.slice();
+  previewValues[6] = descriptionText;
+  previewValues[7] = issuesText;
   SECURITY_COLUMNS.forEach((label, i) => {
     const row = document.createElement('div');
     row.style.marginBottom = '10px';
@@ -379,8 +422,18 @@ function tryRenderSecurityResult(rawText, finishReason){
     lbl.style.color = '#8a8a90';
     lbl.style.marginBottom = '2px';
     const val = document.createElement('div');
-    val.textContent = values[i] === '' ? '(empty)' : values[i];
-    val.style.color = values[i] === '' ? '#b8b8bc' : '#1c1c1e';
+    if(i === 6 || i === 7){
+      val.style.whiteSpace = 'pre-line';
+      // bold the "1." "2." etc numbering and the field heading in the preview too
+      val.innerHTML = i === 6
+        ? `<b>Description</b><br>${escapeHtml(descriptionText)}`
+        : (issues.length
+            ? `<b>Issues</b><br>${issues.map((x,j) => `<b>${j+1}.</b> ${escapeHtml(x)}`).join('<br>')}`
+            : `<b>Issues</b><br>None`);
+    } else {
+      val.textContent = previewValues[i] === '' ? '(empty)' : previewValues[i];
+    }
+    val.style.color = previewValues[i] === '' ? '#b8b8bc' : '#1c1c1e';
     row.appendChild(lbl);
     row.appendChild(val);
     table.appendChild(row);
@@ -400,19 +453,38 @@ function showError(msg){
 // ── COPY ─────────────────────────────────────────────────────────────
 async function copyReport(){
   if(!lastReportText) return;
-  try{
-    await navigator.clipboard.writeText(lastReportText);
-  }catch(e){
-    // fallback for older webviews
-    const ta = document.createElement('textarea');
-    ta.value = lastReportText;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try{ document.execCommand('copy'); }catch(err){}
-    document.body.removeChild(ta);
+  let copied = false;
+
+  // Preferred path: write both HTML (real bold + multi-line-in-cell when
+  // pasted into Excel) and plain text (fallback for anything else) at once.
+  if(lastReportHtml && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+    try{
+      const item = new ClipboardItem({
+        'text/html': new Blob([lastReportHtml], {type:'text/html'}),
+        'text/plain': new Blob([lastReportText], {type:'text/plain'})
+      });
+      await navigator.clipboard.write([item]);
+      copied = true;
+    }catch(e){ /* fall through to plain text below */ }
   }
+
+  if(!copied){
+    try{
+      await navigator.clipboard.writeText(lastReportText);
+      copied = true;
+    }catch(e){
+      // fallback for older webviews
+      const ta = document.createElement('textarea');
+      ta.value = lastReportText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand('copy'); }catch(err){}
+      document.body.removeChild(ta);
+    }
+  }
+
   const flag = document.getElementById('copiedFlag');
   flag.style.display = 'block';
   setTimeout(()=>{ flag.style.display = 'none'; }, 2200);
@@ -422,6 +494,7 @@ function resetAll(){
   document.getElementById('outCard').style.display = 'none';
   document.getElementById('rawInput').value = '';
   lastReportText = '';
+  lastReportHtml = '';
 }
 </script>
 <script src="track.js"></script>
