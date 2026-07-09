@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Create Patrolling Reports</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#ffcd00;      /* Expo City "Supernova" yellow */
+  --ink:#1c1c1e;         /* near-black text */
+  --ink2:#4b494f;        /* Expo City "Gravel" */
+  --muted:#8a8a90;
+  --line:#e7e7ea;
+  --bg:#f7f7f8;
+  --card:#ffffff;
+}
+
+body{
+  font-family:'Inter',sans-serif;
+  background-color:var(--bg);
+  background-image: linear-gradient(rgba(247,247,248,0.25), rgba(247,247,248,0.25)), url("background.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color:var(--ink);
+  min-height:100vh;
+  padding-bottom:90px;
+}
+
+.hdr,.wrap,.footer{position:relative;z-index:1}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);position:sticky;top:0;z-index:99}
+.hdr h1{font-size:1.05em;color:var(--ink);letter-spacing:-0.2px;font-weight:700}
+.badge{background:#fff8dc;border:1px solid var(--accent);border-radius:20px;padding:4px 12px;font-size:0.72em;color:#8a6d00;letter-spacing:0.3px;font-weight:600}
+
+.wrap{padding:20px;max-width:720px;margin:0 auto}
+
+.tabs{display:flex;gap:6px;margin-bottom:20px;background:#eeeeef;border-radius:10px;padding:4px}
+.tab{flex:1;padding:11px;border:none;border-radius:8px;background:transparent;color:var(--muted);text-align:center;font-weight:600;font-size:0.88em;cursor:pointer;transition:all .15s}
+.tab.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.tab i{margin-right:6px;color:inherit}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
+.ch{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.ch span{color:var(--ink);font-size:.88em;font-weight:700;letter-spacing:-0.1px}
+.cb{padding:18px}
+
+textarea{
+  width:100%;min-height:220px;background:#fafafa;color:var(--ink);border:1px solid var(--line);
+  border-radius:10px;padding:14px;font-family:'Inter',sans-serif;font-size:0.9em;line-height:1.6;resize:vertical;outline:none;
+}
+textarea::placeholder{color:var(--muted)}
+textarea:focus{border-color:var(--accent);background:#fff}
+
+.hint{font-size:.78em;color:var(--muted);margin-top:10px;line-height:1.6}
+
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:0.95em;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;transition:opacity .15s}
+.bg{background:var(--ink);color:#fff}.bg:active{opacity:.8}.bg:disabled{opacity:.35;cursor:not-allowed}
+.bo{background:#f1f1f2;color:var(--ink);border:1px solid var(--line)}.bo:active{background:#e9e9ea}
+
+#proc{display:none}
+.ring{width:22px;height:22px;border:2.5px solid rgba(0,0,0,0.12);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#proc .cb{display:flex;align-items:center;justify-content:center;gap:12px;padding:26px}
+#procMsg{color:var(--ink2);font-size:.88em;font-weight:600}
+
+#outCard{display:none}
+#outBox{
+  background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:16px;
+  font-family:'Inter',sans-serif;font-size:0.88em;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:var(--ink);max-height:60vh;overflow-y:auto;
+}
+.copied-flag{display:none;background:#eafaf0;color:#1e7a45;border:1px solid #b9e8cc;text-align:center;padding:9px;border-radius:8px;font-size:.82em;font-weight:600;margin-top:10px}
+
+.errmsg{background:#fff2f1;border:1px solid #ffd4d1;border-radius:10px;padding:14px;color:#b3261e;font-size:.82em;line-height:1.7;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word}
+
+.footer{position:fixed;bottom:0;left:0;width:100%;padding:14px;display:flex;justify-content:center;z-index:100;pointer-events:none}
+.fi{background:rgba(255,255,255,0.97);backdrop-filter:blur(10px);padding:9px 18px;border-radius:20px;border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,0.06);display:flex;align-items:center;gap:12px;pointer-events:auto}
+.fi p{margin:0;font-size:.8em;font-weight:700;color:var(--ink2)}
+.bk{background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 12px;font-size:.78em;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1><i class="fas fa-clipboard-list" style="margin-right:8px;color:var(--accent)"></i>Create Patrolling Reports</h1>
+  <div class="badge"><i class="fas fa-sparkles"></i> AI Assisted</div>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="ch"><span>Paste Raw Security Patrol Notes</span></div>
+    <div class="cb">
+      <textarea id="rawInput" placeholder="Paste the raw patrol notes here exactly as received..."></textarea>
+      <div class="hint">Paste the raw security patrol notes (date, start/end time, location, description, activity, findings, remarks, call sign) in whatever rough format you received them.</div>
+      <button class="btn bg" id="genBtn" onclick="generateReport()"><i class="fas fa-wand-magic-sparkles"></i> Generate Clean Report</button>
+    </div>
+  </div>
+
+  <div class="card" id="proc" style="display:none">
+    <div class="cb">
+      <div class="ring"></div>
+      <div id="procMsg">Generating report...</div>
+    </div>
+  </div>
+
+  <div class="card" id="outCard">
+    <div class="ch">
+      <span>Clean Report</span>
+      <button class="bk" onclick="resetAll()">Clear</button>
+    </div>
+    <div class="cb">
+      <div id="outBox"></div>
+      <button class="btn bg" id="copyBtn" onclick="copyReport()"><i class="fas fa-copy"></i> Copy Report</button>
+      <div class="copied-flag" id="copiedFlag"><i class="fas fa-check"></i> Copied to clipboard</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="fi">
+    <button class="bk" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Back</button>
+    <p>Patrol Report Builder</p>
+  </div>
+</div>
+
+<script>
+// ── CONFIG — reuses the same Cloudflare Worker as the FACP Scanner ──
+const WORKER_URL = "https://facpscanner.memesblast01.workers.dev/";
+
+let lastReportText = '';
+
+// ── PROMPTS ──────────────────────────────────────────────────────────
+// Each prompt teaches the model the exact target format via one worked example,
+// then asks it to reformat the newly pasted raw text the same way.
+
+function buildSecurityPrompt(raw){
+  const now = new Date();
+  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
+
+  return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
+S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
+
+Raw patrol notes come in different styles each time — sometimes labeled fields like "**Date:*", sometimes plain prose, sometimes everything as bullet points with no explicit field labels at all, sometimes different section names. Read for INTENT, not exact wording: figure out what is the general description of the patrol/area, what are activities, and what are findings/pending issues/observations, regardless of how they're formatted or labeled in the raw text, then map them into the correct fields below.
+
+CURRENT DATE/TIME (only use this if the raw note genuinely doesn't state a date, start time, or end time — never override a value that IS given in the raw note): Date ${todayDate}, Time ${nowTime}.
+
+Convert it into a single JSON object with EXACTLY these 9 keys, in this order, and nothing else — no markdown, no code fences, no commentary:
+
+{
+  "sn": "",
+  "date": "",
+  "callSign": "",
+  "patrolType": "",
+  "startTime": "",
+  "location": "",
+  "description": "",
+  "remarks": "",
+  "endTime": ""
+}
+
+Rules for each key:
+- "sn": always an empty string (filled in manually based on row position in the sheet).
+- "date": use the date stated in the raw note. If genuinely not stated, use the current date given above — never leave this blank.
+- "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
+- "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
+- "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above — never leave these blank.
+- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too. ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
+- "remarks": starts with "Findings: " followed ONLY by genuine problems, pending issues, faults, damage, or anything that needs follow-up action (broken/not working/damaged/pending/faulty, or anything with a ticket/reference number like SR-/TN-/TK-/IR-). Use common sense to tell a real issue apart from a routine status note, regardless of what heading the raw note put it under. Number them "1) ... 2) ... 3) ..." run together with no line breaks. SUMMARIZE EACH ONE AGGRESSIVELY — a short fragment, not a sentence: just the object + fault + reference number, drop location if already obvious from context, drop connecting words like "is", "has", "there is". E.g. write "Service lift Entrance-3 not working (SR-99673)" not "The service lift at entrance-3 is not working, reference SR.99673." If the raw note genuinely has NO real issues (everything was fine, nothing pending, no tickets raised), write "Findings: None. All areas checked normal, no issues reported." — do not force routine observations into this field just to fill it. After listing genuine findings (if any), add a short closing remarks sentence if the raw note has one.
+
+BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
+
+Fix typos, spelling, and grammar throughout. Keep every factual detail, reference number, name, and contact exactly as given — never invent or drop information, no matter how long the raw note is. Every finding and every activity line in the raw input must appear somewhere in your output.
+
+WORKED EXAMPLE
+Raw input:
+"""
+**Date:* 04-07-2026
+**Start Time of the Patrol:* 06:02hrs
+**Patrol Type:* Initial Patrol
+**Exact Location of Patrolling:* Firdaus Studio
+**Description of the area patrolled:*
+Conducted the initial patrol in the entire building, both (internal and external) areas checked all critical rooms, Offices, FACP, fire extinguishers, fire hose reel cabinets, amongst other areas and found everything in good condition except pending issues which are under follow-up.
+**Activity:*
+No activity is going on at the moment.
+* Emrill staff came for AC temperature reading, left at 06:27
+**Findings:*
+*Main scoring door not properly fixed. Issue is still pending.
+*UPS device battery replacement is still pending in the server room. TN 0633470.
+*Soap dispenser is not working in the female washroom. TK 0012326.
+**Remarks:*
+Most of the above issues are pending since there are no available materials for rectification as per FM Management.
+*End Time:* 06:55hrs
+**Security Call Sign:* F1
+"""
+
+Correct output:
+{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","remarks":"Findings: 1) Main scoring door not fixed (pending). 2) UPS battery replacement pending, server room (TN-0633470). 3) Soap dispenser not working, female washroom (TK-0012326). Remarks: Above pending due to unavailable materials, per FM Management.","endTime":"06:55hrs"}
+
+SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not remarks:
+Raw input:
+"""
+Date: 08/07/2026
+Location: Sky Avenue
+Subject: Final Patrol Report
+Description:
+Following a routine patrol around Sky Avenue Concourse, all structural shades, common areas, and designated smoking zones were inspected, everything found in satisfactory condition.
+Observations:
+* The Karak Break Shop is still open for visitors.
+* All assembly points are clear and accessible.
+* No medical emergencies have been reported.
+* Visitor traffic was minimal.
+* All LED advertising screens are functioning well and are currently turned on.
+* Pole lights remain turned off.
+Overall, Sky Avenue Concourse appears calm and well-organized.
+Respectfully,
+S-313
+"""
+
+Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and remarks says none found:
+{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","remarks":"Findings: None. All areas checked normal, no issues reported.","endTime":""}
+
+CRITICAL — except "sn" (which always stays empty), every other field must have a value. Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
+
+CRITICAL — do not skip these, check them last before you answer:
+- callSign must NOT be left empty if the raw note has ANY name or code signing off the report — even if there's no label like "Call Sign" at all, a name/code sitting alone on the last line or after "Regards" still counts and must go in callSign.
+- date must never be empty — use the current date given above if the raw note doesn't state one.
+- startTime and endTime must never be empty — use the current time given above if the raw note doesn't state them, or split a combined range like "18:00-20:35hrs".
+
+Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. Remarks = only genuine issues (or "None" if there aren't any), each as short as possible. Output ONLY the JSON object, nothing else:
+"""
+${raw}
+"""`;
+}
+
+// ── GENERATE ─────────────────────────────────────────────────────────
+const SECURITY_KEYS = ['sn','date','callSign','patrolType','startTime','location','description','remarks','endTime'];
+const MAX_ATTEMPTS = 3;
+
+async function callWorker(prompt, useJsonMode){
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 3500
+    }
+  };
+  if(useJsonMode) body.generationConfig.responseMimeType = 'application/json';
+
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+
+  const rawRespText = await response.text();
+  let data;
+  try{ data = JSON.parse(rawRespText); }catch(e){ data = null; }
+
+  if(!response.ok){
+    throw new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
+  }
+
+  return { data, rawRespText };
+}
+
+async function generateReport(){
+  const raw = document.getElementById('rawInput').value.trim();
+  if(!raw){ alert('Paste the raw report text first.'); return; }
+
+  document.getElementById('outCard').style.display = 'none';
+  document.getElementById('copiedFlag').style.display = 'none';
+  document.getElementById('proc').style.display = 'block';
+  document.getElementById('genBtn').disabled = true;
+
+  const prompt = buildSecurityPrompt(raw);
+
+  let lastDiag = '';
+
+  for(let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
+    try{
+      document.getElementById('procMsg').textContent = attempt === 1
+        ? 'Generating report...'
+        : `Retrying (attempt ${attempt} of ${MAX_ATTEMPTS})...`;
+
+      const { data, rawRespText } = await callWorker(prompt, true);
+      const rawText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+      const finishReason = data?.candidates?.[0]?.finishReason;
+
+      if(!rawText){
+        const blockReason = data?.promptFeedback?.blockReason;
+        lastDiag = 'No text came back from the AI engine.\n';
+        if(blockReason) lastDiag += 'Blocked by safety filter: ' + blockReason + '\n';
+        if(finishReason) lastDiag += 'Finish reason: ' + finishReason + '\n';
+        lastDiag += 'Raw response:\n' + rawRespText.slice(0, 800);
+        continue; // retry
+      }
+
+      const ok = tryRenderSecurityResult(rawText, finishReason);
+      if(ok){
+        document.getElementById('proc').style.display = 'none';
+        document.getElementById('genBtn').disabled = false;
+        window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
+        return;
+      }
+      lastDiag = `Attempt ${attempt}: response wasn't valid/complete JSON.\nWhat came back:\n"""\n${rawText}\n"""`;
+      continue; // retry
+
+    }catch(e){
+      lastDiag = 'Error: ' + e.message;
+      continue; // retry
+    }
+  }
+
+  // All attempts exhausted
+  document.getElementById('proc').style.display = 'none';
+  document.getElementById('genBtn').disabled = false;
+  showError(`Tried ${MAX_ATTEMPTS} times and still couldn't get a complete report.\n\n${lastDiag}`);
+  window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
+}
+
+const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
+
+function tryRenderSecurityResult(rawText, finishReason){
+  // Strip accidental code fences some models add despite instructions
+  let cleaned = rawText.trim();
+  if(cleaned.startsWith('```')){
+    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  }
+
+  let obj;
+  try{ obj = JSON.parse(cleaned); }catch(e){ return false; }
+  if(!obj || typeof obj !== 'object') return false;
+
+  // Only require the two content fields to be present — short fields
+  // like startTime/endTime/callSign can legitimately be blank if the
+  // raw note didn't include them.
+  const description = (obj.description ?? '').toString().trim();
+  const remarks = (obj.remarks ?? '').toString().trim();
+  if(!description || !remarks) return false;
+
+  const values = SECURITY_KEYS.map(k => (obj[k] ?? '').toString().trim());
+
+  // Strip a leftover "Description - " / "Description:" prefix in case the model adds one anyway
+  values[6] = values[6].replace(/^description\s*[-:]\s*/i, '').trim();
+
+  // Guaranteed fallback — don't rely on the model alone. Every field except
+  // sn (index 0) must end up non-empty.
+  // Indexes: 1=date, 2=callSign, 3=patrolType, 4=startTime, 5=location, 8=endTime
+  const now = new Date();
+  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
+  if(values[1] === '') values[1] = todayDate;
+  if(values[4] === '') values[4] = nowTime;
+  if(values[8] === '') values[8] = nowTime;
+  if(values[2] === '') values[2] = 'Not specified';
+  if(values[3] === '') values[3] = 'Not specified';
+  if(values[5] === '') values[5] = 'Not specified';
+
+  // Build the real tab-separated line for pasting into Excel
+  lastReportText = values.join('\t');
+
+  // Build a readable label:value preview so you can check nothing is missing
+  const outBox = document.getElementById('outBox');
+  outBox.innerHTML = '';
+  const table = document.createElement('div');
+  SECURITY_COLUMNS.forEach((label, i) => {
+    const row = document.createElement('div');
+    row.style.marginBottom = '10px';
+    const lbl = document.createElement('div');
+    lbl.textContent = label;
+    lbl.style.fontWeight = '700';
+    lbl.style.fontSize = '0.8em';
+    lbl.style.color = '#8a8a90';
+    lbl.style.marginBottom = '2px';
+    const val = document.createElement('div');
+    val.textContent = values[i] === '' ? '(empty)' : values[i];
+    val.style.color = values[i] === '' ? '#b8b8bc' : '#1c1c1e';
+    row.appendChild(lbl);
+    row.appendChild(val);
+    table.appendChild(row);
+  });
+  outBox.appendChild(table);
+  document.getElementById('outCard').style.display = 'block';
+  return true;
+}
+
+function showError(msg){
+  document.getElementById('outBox').innerHTML = '<div class="errmsg"></div>';
+  document.querySelector('#outBox .errmsg').textContent = msg;
+  document.getElementById('outCard').style.display = 'block';
+  window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
+}
+
+// ── COPY ─────────────────────────────────────────────────────────────
+async function copyReport(){
+  if(!lastReportText) return;
+  try{
+    await navigator.clipboard.writeText(lastReportText);
+  }catch(e){
+    // fallback for older webviews
+    const ta = document.createElement('textarea');
+    ta.value = lastReportText;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); }catch(err){}
+    document.body.removeChild(ta);
+  }
+  const flag = document.getElementById('copiedFlag');
+  flag.style.display = 'block';
+  setTimeout(()=>{ flag.style.display = 'none'; }, 2200);
+}
+
+function resetAll(){
+  document.getElementById('outCard').style.display = 'none';
+  document.getElementById('rawInput').value = '';
+  lastReportText = '';
+}
+</script>
+<script src="track.js"></script>
+</body>
+</html>
