@@ -402,17 +402,17 @@ function tryRenderSecurityResult(rawText, finishReason){
   // Rich HTML version — this is what actually gives real bold formatting
   // and proper multi-line-within-a-cell when pasted into Excel.
   const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const descCellHtml = `<b>Description</b><br>${escapeHtml(descriptionText)}`;
+  const descCellHtml = `<div style="mso-data-placement:same-cell;"><b>Description</b><br>${escapeHtml(descriptionText)}</div>`;
   const issuesCellHtml = issues.length
-    ? `<b>Issues</b><br>${issues.map((x,i) => `<b>${i+1}.</b> ${escapeHtml(x)}`).join('<br>')}`
-    : `<b>Issues</b><br>None`;
+    ? `<div style="mso-data-placement:same-cell;"><b>Issues</b><br>${issues.map((x,i) => `<b>${i+1}.</b> ${escapeHtml(x)}`).join('<br>')}</div>`
+    : `<div style="mso-data-placement:same-cell;"><b>Issues</b><br>None</div>`;
   const htmlValues = values.slice();
   const tds = htmlValues.map((v,i) => {
     if(i === 6) return `<td>${descCellHtml}</td>`;
     if(i === 7) return `<td>${issuesCellHtml}</td>`;
     return `<td>${escapeHtml(v)}</td>`;
   });
-  lastReportHtml = `<table><tr>${tds.join('')}</tr></table>`;
+  lastReportHtml = `<table xmlns:x="urn:schemas-microsoft-com:office:excel"><tr>${tds.join('')}</tr></table>`;
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
