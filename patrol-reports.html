@@ -21,22 +21,23 @@
 body{
   font-family:'Inter',sans-serif;
   background-color:var(--bg);
-  background-image:url("pbackground.jpg");
-  background-repeat:no-repeat;
-  background-position:center 120px;
-  background-size:220px auto;
   color:var(--ink);
   min-height:100vh;
   padding-bottom:90px;
 }
 
-/* soft white wash so the watermark logo stays subtle behind content */
+/* visible logo watermark, sits behind all content */
 body::before{
   content:"";
   position:fixed;
   inset:0;
-  background:rgba(247,247,248,0.94);
+  background-image:url("expo-logo.png");
+  background-repeat:no-repeat;
+  background-position:center 140px;
+  background-size:260px auto;
+  opacity:0.14;
   z-index:0;
+  pointer-events:none;
 }
 .hdr,.wrap,.footer{position:relative;z-index:1}
 
@@ -99,16 +100,11 @@ textarea:focus{border-color:var(--accent);background:#fff}
 
 <div class="wrap">
 
-  <div class="tabs">
-    <div class="tab on" id="tabSecurity" onclick="setMode('security')"><i class="fas fa-shield-halved"></i>Security Patrol</div>
-    <div class="tab" id="tabContractor" onclick="setMode('contractor')"><i class="fas fa-truck"></i>Contractor Activity</div>
-  </div>
-
   <div class="card">
-    <div class="ch"><span id="inputTitle">Paste Raw Report</span></div>
+    <div class="ch"><span>Paste Raw Security Patrol Notes</span></div>
     <div class="cb">
       <textarea id="rawInput" placeholder="Paste the raw patrol notes here exactly as received..."></textarea>
-      <div class="hint" id="modeHint"></div>
+      <div class="hint">Paste the raw security patrol notes (date, start/end time, location, description, activity, findings, remarks, call sign) in whatever rough format you received them.</div>
       <button class="btn bg" id="genBtn" onclick="generateReport()"><i class="fas fa-wand-magic-sparkles"></i> Generate Clean Report</button>
     </div>
   </div>
@@ -145,24 +141,7 @@ textarea:focus{border-color:var(--accent);background:#fff}
 // ── CONFIG — reuses the same Cloudflare Worker as the FACP Scanner ──
 const WORKER_URL = "https://facpscanner.memesblast01.workers.dev/";
 
-let mode = 'security';
 let lastReportText = '';
-
-const HINTS = {
-  security: "Paste the raw security patrol notes (date, start/end time, location, description, activity, findings, remarks, call sign) in whatever rough format you received them.",
-  contractor: "Paste the raw contractor / material collection activity notes (date, location, subject, description, in-charge details, driver details) in whatever rough format you received them."
-};
-
-function setMode(m){
-  mode = m;
-  document.getElementById('tabSecurity').classList.toggle('on', m==='security');
-  document.getElementById('tabContractor').classList.toggle('on', m==='contractor');
-  document.getElementById('modeHint').textContent = HINTS[m];
-  document.getElementById('inputTitle').textContent = m === 'security'
-    ? 'Paste Raw Security Patrol Notes'
-    : 'Paste Raw Contractor Activity Notes';
-}
-setMode('security');
 
 // ── PROMPTS ──────────────────────────────────────────────────────────
 // Each prompt teaches the model the exact target format via one worked example,
@@ -200,8 +179,8 @@ Rules for each key:
 - "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
 - "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
 - "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above — never leave these blank.
-- "description": starts with "Description - " followed by a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." Merge everything routine into ONE small, tight paragraph. Clean up wording but stay close to what's said — don't invent detail.
-- "remarks": starts with "Findings: " followed ONLY by genuine problems, pending issues, faults, damage, or anything that needs follow-up action (broken/not working/damaged/pending/faulty, or anything with a ticket/reference number like SR-/TN-/TK-/IR-). Use common sense to tell a real issue apart from a routine status note, regardless of what heading the raw note put it under. Number them "1) ... 2) ... 3) ..." run together with no line breaks, each cut to its shortest possible form (core fact + reference number if any). If the raw note genuinely has NO real issues (everything was fine, nothing pending, no tickets raised), write "Findings: None. All areas checked normal, no issues reported." — do not force routine observations into this field just to fill it. After listing genuine findings (if any), add a short closing remarks sentence if the raw note has one.
+- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too. ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
+- "remarks": starts with "Findings: " followed ONLY by genuine problems, pending issues, faults, damage, or anything that needs follow-up action (broken/not working/damaged/pending/faulty, or anything with a ticket/reference number like SR-/TN-/TK-/IR-). Use common sense to tell a real issue apart from a routine status note, regardless of what heading the raw note put it under. Number them "1) ... 2) ... 3) ..." run together with no line breaks. SUMMARIZE EACH ONE AGGRESSIVELY — a short fragment, not a sentence: just the object + fault + reference number, drop location if already obvious from context, drop connecting words like "is", "has", "there is". E.g. write "Service lift Entrance-3 not working (SR-99673)" not "The service lift at entrance-3 is not working, reference SR.99673." If the raw note genuinely has NO real issues (everything was fine, nothing pending, no tickets raised), write "Findings: None. All areas checked normal, no issues reported." — do not force routine observations into this field just to fill it. After listing genuine findings (if any), add a short closing remarks sentence if the raw note has one.
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
@@ -230,7 +209,7 @@ Most of the above issues are pending since there are no available materials for 
 """
 
 Correct output:
-{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Description - Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","remarks":"Findings: 1) Main scoring door not properly fixed, pending. 2) UPS battery replacement pending in server room (TN-0633470). 3) Soap dispenser not working in female washroom (TK-0012326). Remarks: Above issues pending due to unavailable materials for rectification, as per FM Management.","endTime":"06:55hrs"}
+{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","remarks":"Findings: 1) Main scoring door not fixed (pending). 2) UPS battery replacement pending, server room (TN-0633470). 3) Soap dispenser not working, female washroom (TK-0012326). Remarks: Above pending due to unavailable materials, per FM Management.","endTime":"06:55hrs"}
 
 SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not remarks:
 Raw input:
@@ -253,59 +232,16 @@ S-313
 """
 
 Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and remarks says none found:
-{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Description - Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","remarks":"Findings: None. All areas checked normal, no issues reported.","endTime":""}
+{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","remarks":"Findings: None. All areas checked normal, no issues reported.","endTime":""}
+
+CRITICAL — except "sn" (which always stays empty), every other field must have a value. Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
+
+CRITICAL — do not skip these, check them last before you answer:
+- callSign must NOT be left empty if the raw note has ANY name or code signing off the report — even if there's no label like "Call Sign" at all, a name/code sitting alone on the last line or after "Regards" still counts and must go in callSign.
+- date must never be empty — use the current date given above if the raw note doesn't state one.
+- startTime and endTime must never be empty — use the current time given above if the raw note doesn't state them, or split a combined range like "18:00-20:35hrs".
 
 Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. Remarks = only genuine issues (or "None" if there aren't any), each as short as possible. Output ONLY the JSON object, nothing else:
-"""
-${raw}
-"""`;
-}
-
-function buildContractorPrompt(raw){
-  return `You are formatting Expo City Security contractor activity reports. You will be given a rough, informal raw note about a contractor/material collection activity. Rewrite it into a clean version using the SAME field labels and order the raw note already uses — do not rename or restructure the sections. Only fix spelling, grammar, punctuation, spacing, and capitalization. Keep every factual detail (names, mobile numbers, VRN, company names, MEP reference) exactly as given — never invent information. The only exception: if a sentence has an obvious grammatical gap (a dropped word) and the missing piece is already stated elsewhere in the same raw note (e.g. a company name given later under its details section), you may use that already-stated fact to complete the sentence naturally. If something is genuinely missing anywhere in the raw text, leave it blank rather than guessing. Output plain text only, no markdown symbols like ** or #, no HTML.
-
-WORKED EXAMPLE
-Raw input:
-"""
-Date: 04/07/26
-Location: SUS basement zone 4 loading bay.
-Subject: Material collection
-Description: Be informed that staff from are shifting building waste materials from CRC taking them outside Expo under a valid MEP.
-Incharge Details;
-Name: Muhammad Aziz
-Mobile: 0551473254
-Company: Red leaf
-Driver details;
-Name: Waseem
-Mobile: 0529182605
-VRN: 21065
-Company: Ejaz transportation
-Regards
-"""
-
-Correct output:
-"""
-Date: 04-07-2026
-Location: SUS Basement Zone 4, Loading Bay
-Subject: Material Collection
-
-Description: Be informed that staff from Red Leaf are shifting building waste materials from CRC, taking them outside Expo under a valid MEP.
-
-Incharge Details;
-Name: Muhammad Aziz
-Mobile: 0551473254
-Company: Red Leaf
-
-Driver Details;
-Name: Waseem
-Mobile: 0529182605
-VRN: 21065
-Company: Ejaz Transportation
-
-Regards
-"""
-
-Now reformat this new raw input the same way, keeping its own field labels and order:
 """
 ${raw}
 """`;
@@ -320,40 +256,23 @@ async function callWorker(prompt, useJsonMode){
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 1500
+      maxOutputTokens: 3500
     }
   };
   if(useJsonMode) body.generationConfig.responseMimeType = 'application/json';
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s cap
-
-  let response;
-  try{
-    response = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-  }catch(e){
-    if(e.name === 'AbortError'){
-      throw new Error('The AI engine took too long to respond (over 40s) and the request was cancelled. This usually means the model is overloaded — try again in a moment.');
-    }
-    throw e;
-  }finally{
-    clearTimeout(timeoutId);
-  }
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
 
   const rawRespText = await response.text();
   let data;
   try{ data = JSON.parse(rawRespText); }catch(e){ data = null; }
 
   if(!response.ok){
-    const isRateLimit = response.status === 429 || data?.error?.status === 'RESOURCE_EXHAUSTED';
-    const err = new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
-    err.isRateLimit = isRateLimit;
-    throw err;
+    throw new Error('Worker error ' + response.status + ': ' + (data?.error?.message || rawRespText || 'Unknown error'));
   }
 
   return { data, rawRespText };
@@ -368,7 +287,7 @@ async function generateReport(){
   document.getElementById('proc').style.display = 'block';
   document.getElementById('genBtn').disabled = true;
 
-  const prompt = mode === 'security' ? buildSecurityPrompt(raw) : buildContractorPrompt(raw);
+  const prompt = buildSecurityPrompt(raw);
 
   let lastDiag = '';
 
@@ -378,7 +297,7 @@ async function generateReport(){
         ? 'Generating report...'
         : `Retrying (attempt ${attempt} of ${MAX_ATTEMPTS})...`;
 
-      const { data, rawRespText } = await callWorker(prompt, mode === 'security');
+      const { data, rawRespText } = await callWorker(prompt, true);
       const rawText = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
       const finishReason = data?.candidates?.[0]?.finishReason;
 
@@ -391,33 +310,17 @@ async function generateReport(){
         continue; // retry
       }
 
-      if(mode === 'security'){
-        const ok = tryRenderSecurityResult(rawText, finishReason);
-        if(ok){
-          document.getElementById('proc').style.display = 'none';
-          document.getElementById('genBtn').disabled = false;
-          window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
-          return;
-        }
-        lastDiag = `Attempt ${attempt}: response wasn't valid/complete JSON.\nWhat came back:\n"""\n${rawText}\n"""`;
-        continue; // retry
-      } else {
-        lastReportText = rawText;
-        document.getElementById('outBox').textContent = rawText;
-        document.getElementById('outCard').style.display = 'block';
+      const ok = tryRenderSecurityResult(rawText, finishReason);
+      if(ok){
         document.getElementById('proc').style.display = 'none';
         document.getElementById('genBtn').disabled = false;
         window.scrollTo({top: document.getElementById('outCard').offsetTop - 70, behavior:'smooth'});
         return;
       }
+      lastDiag = `Attempt ${attempt}: response wasn't valid/complete JSON.\nWhat came back:\n"""\n${rawText}\n"""`;
+      continue; // retry
 
     }catch(e){
-      if(e.isRateLimit){
-        document.getElementById('proc').style.display = 'none';
-        document.getElementById('genBtn').disabled = false;
-        showError("You've hit the free Gemini API quota (20 requests) for your Cloudflare Worker's key. This isn't a bug — Google is rate-limiting the key itself. Wait a minute and try again, or upgrade the Google AI Studio billing plan on that API key for a higher limit.\n\nDetails: " + e.message);
-        return;
-      }
       lastDiag = 'Error: ' + e.message;
       continue; // retry
     }
@@ -451,6 +354,22 @@ function tryRenderSecurityResult(rawText, finishReason){
   if(!description || !remarks) return false;
 
   const values = SECURITY_KEYS.map(k => (obj[k] ?? '').toString().trim());
+
+  // Strip a leftover "Description - " / "Description:" prefix in case the model adds one anyway
+  values[6] = values[6].replace(/^description\s*[-:]\s*/i, '').trim();
+
+  // Guaranteed fallback — don't rely on the model alone. Every field except
+  // sn (index 0) must end up non-empty.
+  // Indexes: 1=date, 2=callSign, 3=patrolType, 4=startTime, 5=location, 8=endTime
+  const now = new Date();
+  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
+  if(values[1] === '') values[1] = todayDate;
+  if(values[4] === '') values[4] = nowTime;
+  if(values[8] === '') values[8] = nowTime;
+  if(values[2] === '') values[2] = 'Not specified';
+  if(values[3] === '') values[3] = 'Not specified';
+  if(values[5] === '') values[5] = 'Not specified';
 
   // Build the real tab-separated line for pasting into Excel
   lastReportText = values.join('\t');
