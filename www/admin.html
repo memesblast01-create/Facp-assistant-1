@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FACP Admin Panel</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -66,6 +68,19 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
   border-radius: 12px; padding: 2px 10px; font-size: 0.8em;
   margin-left: 6px; white-space: nowrap;
 }
+.stat-cards { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
+.stat-card {
+  flex: 1; min-width: 160px; background: rgba(37,211,102,0.08);
+  border: 1px solid rgba(37,211,102,0.35); border-radius: 12px;
+  padding: 16px; text-align: center;
+}
+.stat-card .num { font-size: 2em; font-weight: bold; color: #25D366; }
+.stat-card .label { font-size: 0.8em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+#trackMap { width: 100%; height: 380px; border-radius: 12px; border: 1px solid #333; margin-top: 10px; }
+.active-list { margin-top: 15px; max-height: 200px; overflow-y: auto; }
+.active-list .row { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #222; font-size: 0.85em; }
+.active-list .row span:first-child { color: #eee; }
+.active-list .row span:last-child { color: #aaa; }
 @media (max-width: 600px) {
   .box { max-width: 100%; }
   .header { flex-direction: column; align-items: flex-start; }
@@ -102,6 +117,7 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('data', this)">Data Management</button>
         <button class="tab-btn" onclick="switchTab('news', this)">News Section</button>
+        <button class="tab-btn" onclick="switchTab('analytics', this)">Usage Analytics</button>
         <button class="tab-btn" id="adminTabBtn" onclick="switchTab('admins', this)">Manage Admins</button>
       </div>
 
@@ -134,6 +150,24 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
         <h3>Manage News Ticker</h3>
         <textarea id="newsText" style="width:100%; height:100px; background:#1a1a1a; color:white; border:1px solid #333; border-radius:8px; padding:10px; margin-top:10px;" placeholder="Enter news text here..."></textarea>
         <button onclick="updateNews()" style="margin-top:10px;">Update News</button>
+      </div>
+
+      <!-- ANALYTICS TAB -->
+      <div id="analyticsTab" class="tab-content">
+        <h3>Live Usage</h3>
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="num" id="dailyUniqueNum">–</div>
+            <div class="label">Unique Users Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="num" id="activeNowNum">–</div>
+            <div class="label">Currently Active</div>
+          </div>
+        </div>
+        <div id="trackMap"></div>
+        <div class="active-list" id="activeList"></div>
+        <p style="color:#666; font-size:0.75em; margin-top:10px;">Location is approximate (based on network location, not GPS). Refreshes every 20 seconds while this tab is open.</p>
       </div>
 
       <!-- ADMINS TAB -->
@@ -221,6 +255,75 @@ function switchTab(tab, btn) {
   document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
   document.getElementById(tab + "Tab").classList.add("active");
   btn.classList.add("active");
+  if (tab === 'analytics') {
+    loadAnalytics();
+    startAnalyticsAutoRefresh();
+  } else {
+    stopAnalyticsAutoRefresh();
+  }
+}
+
+// ── USAGE ANALYTICS ───────────────────────────────────────────────
+const TRACK_STATS_URL = "https://facpscanner.memesblast01.workers.dev/track-stats";
+let trackMapInstance = null;
+let trackMarkers = [];
+let analyticsTimer = null;
+
+function startAnalyticsAutoRefresh() {
+  if (analyticsTimer) return;
+  analyticsTimer = setInterval(loadAnalytics, 20000);
+}
+function stopAnalyticsAutoRefresh() {
+  if (analyticsTimer) { clearInterval(analyticsTimer); analyticsTimer = null; }
+}
+
+async function loadAnalytics() {
+  try {
+    const res = await fetch(TRACK_STATS_URL);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    document.getElementById('dailyUniqueNum').textContent = data.dailyUniqueCount ?? '0';
+    document.getElementById('activeNowNum').textContent = data.activeCount ?? '0';
+
+    if (!trackMapInstance) {
+      trackMapInstance = L.map('trackMap').setView([25.0, 55.2], 3); // default view, will fit to pins
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(trackMapInstance);
+    }
+
+    trackMarkers.forEach(m => trackMapInstance.removeLayer(m));
+    trackMarkers = [];
+
+    const listEl = document.getElementById('activeList');
+    listEl.innerHTML = '';
+
+    const pins = (data.activePins || []).filter(p => p.lat && p.lon);
+    pins.forEach(p => {
+      const marker = L.marker([parseFloat(p.lat), parseFloat(p.lon)])
+        .addTo(trackMapInstance)
+        .bindPopup(`<b>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''}</b><br>Page: ${p.page || '—'}`);
+      trackMarkers.push(marker);
+    });
+
+    if (pins.length > 0) {
+      const bounds = L.latLngBounds(pins.map(p => [parseFloat(p.lat), parseFloat(p.lon)]));
+      trackMapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 10 });
+    }
+
+    (data.activePins || []).forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span>${p.page || '—'}</span><span>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''}</span>`;
+      listEl.appendChild(row);
+    });
+    if (!(data.activePins || []).length) {
+      listEl.innerHTML = '<div class="row"><span style="color:#666">No one currently active</span></div>';
+    }
+  } catch (e) {
+    console.error('Analytics load failed:', e);
+  }
 }
 
 // ─── Helper: extract zone value from a record ───────────────────────────────
@@ -439,5 +542,6 @@ async function deleteAdmin(id) {
   } catch(e) { alert("Error: " + e.message); }
 }
 </script>
+<script src="track.js"></script>
 </body>
 </html>
