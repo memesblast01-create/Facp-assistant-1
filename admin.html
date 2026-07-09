@@ -303,7 +303,7 @@ async function loadAnalytics() {
     pins.forEach(p => {
       const marker = L.marker([parseFloat(p.lat), parseFloat(p.lon)])
         .addTo(trackMapInstance)
-        .bindPopup(`<b>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''}</b><br>Page: ${p.page || '—'}`);
+        .bindPopup(`<b>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''}</b><br>Page: ${p.page || '—'}<br><span style="font-size:0.8em;color:${p.locationSource==='gps'?'#25D366':'#999'}">${p.locationSource==='gps' ? '📍 GPS (precise)' : '🌐 IP-based (approximate)'}</span>`);
       trackMarkers.push(marker);
     });
 
@@ -315,7 +315,7 @@ async function loadAnalytics() {
     (data.activePins || []).forEach(p => {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `<span>${p.page || '—'}</span><span>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''}</span>`;
+      row.innerHTML = `<span>${p.page || '—'}</span><span>${p.city || 'Unknown'}${p.country ? ', ' + p.country : ''} ${p.locationSource==='gps' ? '📍' : '🌐'}</span>`;
       listEl.appendChild(row);
     });
     if (!(data.activePins || []).length) {
