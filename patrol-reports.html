@@ -138,9 +138,18 @@ let lastReportText = '';
 // Each prompt teaches the model the exact target format via one worked example,
 // then asks it to reformat the newly pasted raw text the same way.
 
+function formatUnambiguousDate(d){
+  // DD-MMM-YYYY (e.g. 09-Jul-2026) — unlike DD-MM-YYYY, this can never be
+  // misread by Excel's locale-based date parser as a different month/day.
+  const day = String(d.getDate()).padStart(2,'0');
+  const month = d.toLocaleDateString('en-GB', {month:'short'}); // "Jul"
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 function buildSecurityPrompt(raw){
   const now = new Date();
-  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const todayDate = formatUnambiguousDate(now);
   const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
 
   return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
@@ -166,12 +175,14 @@ Convert it into a single JSON object with EXACTLY these 9 keys, in this order, a
 
 Rules for each key:
 - "sn": always an empty string (filled in manually based on row position in the sheet).
-- "date": use the date stated in the raw note. If genuinely not stated, use the current date given above — never leave this blank.
+- "date": use the date stated in the raw note, but ALWAYS reformat it to DD-MMM-YYYY (e.g. "09-Jul-2026") regardless of what format it appears in originally (e.g. "10 July 2026", "08/07/2026", "04-07-26" must all become this exact DD-MMM-YYYY style). Never output a purely numeric date like "09-07-2026" — numeric month/day order is ambiguous and gets misread. If genuinely not stated, use the current date given above (already in the correct format) — never leave this blank.
 - "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
 - "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
-- "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above — never leave these blank.
+- "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above for startTime — never leave startTime blank. (endTime has one exception — see below.)
 - "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too. ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
 - "issues": an ARRAY of strings, one string per genuine issue. STRICT RULE — only include an issue here if it has an actual ticket/reference number attached in the raw note (SR-, TN-, TK-, IR-, or similar). If a problem is mentioned but has NO reference number at all (e.g. "no SR shared", "no ticket raised", or just no number given), DO NOT include it in this array at all — leave it out completely, do not even mention it. Do not include recurring "still pending from before" phrasing or a general closing remarks sentence — this array is ONLY the current ticketed issues, nothing else, no summary line at the end. Each string should be a short fragment (not a sentence): object + fault + reference number, e.g. "Service lift Entrance-3 not working (SR-99673)". Drop connecting words like "is", "has", "there is". If there are genuinely no issues with a reference number, use an empty array [].
+  SPECIAL CASE — contractor/PPM/maintenance notification reports: some raw notes aren't a security patrol with findings at all — they're a notification about a contractor or maintenance company carrying out work (e.g. mentions a company name doing PPM/testing/maintenance, a permit/PTW, and an "In-Charge Details" section with a name and contact number, usually signing off with "Regards"). For THIS type of note only: put the in-charge person's name and contact number VERBATIM (exactly as written, don't reformat the number) as the one and only entry in "issues" — this is exempt from the ticket-number rule above. Example entry: "In-Charge: Mr. Muhammad Ayaz, Contact: 0501231973".
+- "endTime": for a normal patrol report, follow the endTime rule above (use current time if missing). SPECIAL CASE — for a contractor/PPM/maintenance notification report (see the special case above — no natural start/end, it's just announcing ongoing work), set endTime to exactly "N/A" instead of a time, since there's no patrol end for this kind of note.
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
@@ -201,7 +212,7 @@ Most of the above issues are pending since there are no available materials for 
 """
 
 Correct output — note the bench light finding has NO reference number, so it is left out of "issues" entirely, and the generic closing remarks sentence is dropped too:
-{"sn":"","date":"04-07-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","issues":["Main scoring door not fixed (pending)","UPS battery replacement pending, server room (TN-0633470)","Soap dispenser not working, female washroom (TK-0012326)"],"endTime":"06:55hrs"}
+{"sn":"","date":"04-Jul-2026","callSign":"F1","patrolType":"Initial Patrol","startTime":"06:02hrs","location":"Firdaus Studio","description":"Conducted the initial patrol in the entire building, both internal and external areas checked, all critical rooms, offices, FACP, fire extinguishers, and fire hose reel cabinets checked, everything found in good condition except pending issues under follow-up.","issues":["Main scoring door not fixed (pending)","UPS battery replacement pending, server room (TN-0633470)","Soap dispenser not working, female washroom (TK-0012326)"],"endTime":"06:55hrs"}
 
 SECOND WORKED EXAMPLE — shows how routine "observation" bullets with no real problems belong in description, not issues:
 Raw input:
@@ -224,7 +235,26 @@ S-313
 """
 
 Correct output — note ALL of these bullets are routine status, not problems, so they all go into description and issues is empty:
-{"sn":"","date":"08-07-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","issues":[],"endTime":""}
+{"sn":"","date":"08-Jul-2026","callSign":"S-313","patrolType":"Final Patrol","startTime":"","location":"Sky Avenue","description":"Routine patrol around Sky Avenue Concourse, all structural shades, common areas, and smoking zones inspected, everything satisfactory. Karak Break Shop open, assembly points clear, no medical emergencies, visitor traffic minimal, LED screens functioning, pole lights off. Overall calm and well-organized.","issues":[],"endTime":""}
+
+THIRD WORKED EXAMPLE — a contractor/PPM notification report, not a patrol:
+Raw input:
+"""
+Date: 10 July 2026
+Location: Sustainability Basement
+Subject: Alarm Check Valve PPM
+Description:
+Please be informed that SIBCA is conducting the Alarm Check Valve PPM in the Sustainability Basement. During the activity, the FACP systems in Zones 1 to 6 have been temporarily disabled under a valid PTW.
+In-Charge Details:
+Name: Mr. Muhammad Ayaz
+Contact:-0 50 123 1973
+Regards,
+SB202
+"""
+(Current date/time context for this example: Date 10-Jul-2026, Time 14:20hrs)
+
+Correct output — no patrol start/end here, so startTime uses the current time, endTime is "N/A", and the in-charge contact goes into issues verbatim since there's no ticketed problem to report:
+{"sn":"","date":"10-Jul-2026","callSign":"SB202","patrolType":"Alarm Check Valve PPM","startTime":"14:20hrs","location":"Sustainability Basement","description":"SIBCA is conducting the Alarm Check Valve PPM in the Sustainability Basement. FACP systems in Zones 1 to 6 have been temporarily disabled under a valid PTW.","issues":["In-Charge: Mr. Muhammad Ayaz, Contact: 0 50 123 1973"],"endTime":"N/A"}
 
 CRITICAL — except "sn" (which always stays empty), every other field must have a value (issues can be an empty array, that's fine). Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
 
@@ -328,6 +358,7 @@ async function generateReport(){
 
 const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
 const TICKET_PATTERN = /\b(SR|TN|TK|IR)[\s.\-]?\d{3,}/i;
+const INCHARGE_PATTERN = /in-?charge|contact\s*[:\-]/i;
 
 
 function tryRenderSecurityResult(rawText, finishReason){
@@ -352,7 +383,7 @@ function tryRenderSecurityResult(rawText, finishReason){
   // reference/ticket number, in case the model included one anyway.
   const issues = rawIssues
     .map(x => (x ?? '').toString().trim())
-    .filter(x => x && TICKET_PATTERN.test(x));
+    .filter(x => x && (TICKET_PATTERN.test(x) || INCHARGE_PATTERN.test(x)));
 
   const values = SECURITY_KEYS.map(k => {
     if(k === 'issues') return ''; // handled separately below
@@ -366,7 +397,7 @@ function tryRenderSecurityResult(rawText, finishReason){
   // sn (index 0) must end up non-empty.
   // Indexes: 1=date, 2=callSign, 3=patrolType, 4=startTime, 5=location, 8=endTime
   const now = new Date();
-  const todayDate = now.toLocaleDateString('en-GB').split('/').join('-'); // DD-MM-YYYY
+  const todayDate = formatUnambiguousDate(now);
   const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
   if(values[1] === '') values[1] = todayDate;
   if(values[4] === '') values[4] = nowTime;
