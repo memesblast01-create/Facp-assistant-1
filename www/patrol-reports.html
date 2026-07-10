@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Create Patrolling Reports</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -116,6 +117,17 @@ textarea:focus{border-color:var(--accent);background:#fff}
       <div id="outBox"></div>
       <button class="btn bg" id="copyBtn" onclick="copyReport()"><i class="fas fa-copy"></i> Copy Report</button>
       <div class="copied-flag" id="copiedFlag"><i class="fas fa-check"></i> Copied to clipboard</div>
+      <button class="btn bo" id="addExcelBtn" onclick="addCurrentReportToExcel()"><i class="fas fa-file-excel"></i> Add to Today's Excel</button>
+      <div class="copied-flag" id="addedFlag" style="background:#eaf3ff;color:#1a5fb4;border-color:#bcdcff;"><i class="fas fa-check"></i> Added to today's Excel</div>
+    </div>
+  </div>
+
+  <div class="card" id="excelCard">
+    <div class="ch"><span>Today's Excel</span></div>
+    <div class="cb">
+      <div class="hint" id="excelCountLabel" style="margin-top:0;">No reports added yet today.</div>
+      <button class="btn bo" id="downloadExcelBtn" onclick="downloadTodayExcel()" disabled><i class="fas fa-download"></i> Download Today's Excel</button>
+      <button class="bk" id="clearExcelBtn" onclick="clearTodayExcel()" style="margin-top:10px;width:100%;padding:10px;">Clear today's saved reports</button>
     </div>
   </div>
 
@@ -487,6 +499,163 @@ function resetAll(){
   document.getElementById('outCard').style.display = 'none';
   document.getElementById('rawInput').value = '';
   lastReportText = '';
+}
+
+// ── TODAY'S EXCEL — saved entirely in this browser's IndexedDB ──────
+// Nothing here ever leaves this device. Each report you "Add to Excel"
+// is stored locally, keyed to today's date, and only rebuilt into a
+// real .xlsx (from patrol-template.xlsx) when you hit Download.
+
+const EXCEL_DB_NAME = 'patrolExcelDB';
+const EXCEL_STORE = 'dailyReports';
+
+function todayKey(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function openExcelDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(EXCEL_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(EXCEL_STORE)){
+        const store = db.createObjectStore(EXCEL_STORE, {keyPath:'id', autoIncrement:true});
+        store.createIndex('dateKey', 'dateKey', {unique:false});
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function addReportRecord(values){
+  const db = await openExcelDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(EXCEL_STORE, 'readwrite');
+    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, addedAt: Date.now()});
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getTodayRecords(){
+  const db = await openExcelDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(EXCEL_STORE, 'readonly');
+    const idx = tx.objectStore(EXCEL_STORE).index('dateKey');
+    const req = idx.getAll(todayKey());
+    req.onsuccess = () => resolve(req.result.sort((a,b) => a.addedAt - b.addedAt));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function clearTodayRecords(){
+  const db = await openExcelDB();
+  const records = await getTodayRecords();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(EXCEL_STORE, 'readwrite');
+    const store = tx.objectStore(EXCEL_STORE);
+    records.forEach(r => store.delete(r.id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function refreshExcelCountLabel(){
+  try{
+    const records = await getTodayRecords();
+    const label = document.getElementById('excelCountLabel');
+    const btn = document.getElementById('downloadExcelBtn');
+    if(records.length === 0){
+      label.textContent = 'No reports added yet today.';
+      btn.disabled = true;
+    } else {
+      label.textContent = `${records.length} report${records.length === 1 ? '' : 's'} saved today, ready to download.`;
+      btn.disabled = false;
+    }
+  }catch(e){ console.error('Failed to load today\'s saved reports:', e); }
+}
+refreshExcelCountLabel();
+
+async function addCurrentReportToExcel(){
+  if(!lastReportText) return;
+  const values = lastReportText.split('\t'); // the 9 fields, in column order
+  try{
+    await addReportRecord(values);
+    await refreshExcelCountLabel();
+    const flag = document.getElementById('addedFlag');
+    flag.style.display = 'block';
+    setTimeout(()=>{ flag.style.display = 'none'; }, 2200);
+  }catch(e){
+    alert('Could not save this report locally: ' + e.message);
+  }
+}
+
+async function clearTodayExcel(){
+  const records = await getTodayRecords();
+  if(records.length === 0) return;
+  if(!confirm(`Clear all ${records.length} report(s) saved today? This can't be undone.`)) return;
+  await clearTodayRecords();
+  await refreshExcelCountLabel();
+}
+
+async function downloadTodayExcel(){
+  const btn = document.getElementById('downloadExcelBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building file...';
+
+  try{
+    const records = await getTodayRecords();
+    if(records.length === 0){ alert('No reports saved today yet.'); return; }
+
+    const resp = await fetch('patrol-template.xlsx');
+    if(!resp.ok) throw new Error('Could not load patrol-template.xlsx (HTTP ' + resp.status + ')');
+    const buffer = await resp.arrayBuffer();
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const ws = workbook.worksheets[0];
+
+    // Row 7 is the template's first blank data row — clone its style for every new row.
+    const templateRow = ws.getRow(7);
+    const startRow = 7;
+
+    records.forEach((record, i) => {
+      const rowNum = startRow + i;
+      const row = ws.getRow(rowNum);
+      const rowValues = [i+1, ...record.values.slice(1)]; // S/N = sequential number
+      for(let col = 1; col <= 9; col++){
+        const cell = row.getCell(col);
+        cell.value = rowValues[col-1] ?? '';
+        cell.style = Object.assign({}, templateRow.getCell(col).style);
+      }
+      if(templateRow.height) row.height = templateRow.height;
+      row.commit();
+    });
+
+    ws.views = [{ showGridLines: false }];
+
+    const outBuffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([outBuffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Patrol_Report_${todayKey()}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+  }catch(e){
+    alert('Could not build the Excel file: ' + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    refreshExcelCountLabel();
+  }
 }
 </script>
 <script src="track.js"></script>
