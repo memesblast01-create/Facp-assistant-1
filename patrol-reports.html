@@ -145,6 +145,7 @@ textarea:focus{border-color:var(--accent);background:#fff}
 const WORKER_URL = "https://facpscanner.memesblast01.workers.dev/";
 
 let lastReportText = '';
+let lastStructured = null; // {description, issues:[...]} — kept separately so Excel export can build proper bold/multi-line cells
 
 // ── PROMPTS ──────────────────────────────────────────────────────────
 // Each prompt teaches the model the exact target format via one worked example,
@@ -437,6 +438,7 @@ function tryRenderSecurityResult(rawText, finishReason){
   plainValues[6] = descriptionText;
   plainValues[7] = issuesText;
   lastReportText = plainValues.join('\t');
+  lastStructured = { values: plainValues, description: descriptionText, issues: issues.slice() };
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
@@ -530,11 +532,11 @@ function openExcelDB(){
   });
 }
 
-async function addReportRecord(values){
+async function addReportRecord(values, description, issues){
   const db = await openExcelDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(EXCEL_STORE, 'readwrite');
-    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, addedAt: Date.now()});
+    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, description, issues, addedAt: Date.now()});
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -580,10 +582,9 @@ async function refreshExcelCountLabel(){
 refreshExcelCountLabel();
 
 async function addCurrentReportToExcel(){
-  if(!lastReportText) return;
-  const values = lastReportText.split('\t'); // the 9 fields, in column order
+  if(!lastReportText || !lastStructured) return;
   try{
-    await addReportRecord(values);
+    await addReportRecord(lastStructured.values, lastStructured.description, lastStructured.issues);
     await refreshExcelCountLabel();
     const flag = document.getElementById('addedFlag');
     flag.style.display = 'block';
@@ -622,17 +623,55 @@ async function downloadTodayExcel(){
     // Row 7 is the template's first blank data row — clone its style for every new row.
     const templateRow = ws.getRow(7);
     const startRow = 7;
+    const baseFont = templateRow.getCell(7).font || { name: 'Aptos Narrow', size: 12 };
 
     records.forEach((record, i) => {
       const rowNum = startRow + i;
       const row = ws.getRow(rowNum);
       const rowValues = [i+1, ...record.values.slice(1)]; // S/N = sequential number
+
       for(let col = 1; col <= 9; col++){
         const cell = row.getCell(col);
-        cell.value = rowValues[col-1] ?? '';
-        cell.style = Object.assign({}, templateRow.getCell(col).style);
+        const templateCell = templateRow.getCell(col);
+        cell.style = Object.assign({}, templateCell.style);
+
+        if(col === 7){
+          // Description — bold heading, line break, then the paragraph
+          const desc = record.description ?? rowValues[6] ?? '';
+          cell.value = {
+            richText: [
+              { text: 'Description\n', font: Object.assign({}, baseFont, {bold:true}) },
+              { text: desc, font: Object.assign({}, baseFont, {bold:false}) }
+            ]
+          };
+          cell.alignment = Object.assign({}, templateCell.alignment, {wrapText:true, vertical:'top'});
+        } else if(col === 8){
+          // Issues — bold heading, then one issue per line with a bold number
+          const issuesArr = Array.isArray(record.issues) ? record.issues : null;
+          const runs = [{ text: 'Issues\n', font: Object.assign({}, baseFont, {bold:true}) }];
+          if(issuesArr && issuesArr.length){
+            issuesArr.forEach((issue, idx) => {
+              runs.push({ text: `${idx+1}. `, font: Object.assign({}, baseFont, {bold:true}) });
+              runs.push({ text: issue + (idx < issuesArr.length-1 ? '\n' : ''), font: Object.assign({}, baseFont, {bold:false}) });
+            });
+          } else {
+            runs.push({ text: issuesArr ? 'None' : (rowValues[7] ?? 'None'), font: Object.assign({}, baseFont, {bold:false}) });
+          }
+          cell.value = { richText: runs };
+          cell.alignment = Object.assign({}, templateCell.alignment, {wrapText:true, vertical:'top'});
+        } else {
+          cell.value = rowValues[col-1] ?? '';
+        }
       }
-      if(templateRow.height) row.height = templateRow.height;
+
+      // Multi-line cells need more row height than the blank template row —
+      // estimate based on how many lines the description/issues will wrap to.
+      const estLines = text => Math.max(1, Math.ceil((text || '').length / 55));
+      const descLines = 1 + estLines(record.description ?? rowValues[6] ?? '');
+      const issuesArr2 = Array.isArray(record.issues) ? record.issues : [];
+      const issuesLines = 1 + (issuesArr2.length ? issuesArr2.reduce((sum,x) => sum + estLines(x), 0) : 1);
+      const neededHeight = Math.max(descLines, issuesLines) * 15 + 6;
+      row.height = Math.max(templateRow.height || 15, neededHeight);
       row.commit();
     });
 
