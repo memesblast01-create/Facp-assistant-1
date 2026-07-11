@@ -160,6 +160,34 @@ function formatUnambiguousDate(d){
   return `${day}-${month}-${year}`;
 }
 
+// For contractor/PPM notification reports only (no real "Patrol Type" of
+// their own) — classifies the start time into Initial/Hourly/Random/Final
+// based on the exact shift windows given. Done in code, not left to the AI,
+// since this needs to be an exact, reliable time comparison every time.
+// The two 30-minute shift-changeover gaps (05:30-06:00, 17:30-18:00) are
+// folded into the preceding "Final" window.
+function derivePatrolTypeFromTime(timeStr){
+  const m = (timeStr||'').match(/(\d{1,2}):(\d{2})/);
+  if(!m) return '';
+  const t = parseInt(m[1],10)*60 + parseInt(m[2],10);
+  const windows = [
+    [1080, 1140, 'Initial'], // 18:00–19:00
+    [1140, 1410, 'Hourly'],  // 19:00–23:30
+    [1410, 1500, 'Random'],  // 23:30–01:00 (+1 day)
+    [60,   270,  'Hourly'],  // 01:00–04:30
+    [270,  360,  'Final'],   // 04:30–06:00 (incl. changeover gap)
+    [360,  420,  'Initial'], // 06:00–07:00
+    [420,  690,  'Hourly'],  // 07:00–11:30
+    [690,  780,  'Random'],  // 11:30–13:00
+    [780,  990,  'Hourly'],  // 13:00–16:30
+    [990,  1080, 'Final'],   // 16:30–18:00 (incl. changeover gap)
+  ];
+  for(const [start,end,label] of windows){
+    if((t >= start && t < end) || (t+1440 >= start && t+1440 < end)) return label;
+  }
+  return 'Hourly';
+}
+
 function buildSecurityPrompt(raw){
   const now = new Date();
   const todayDate = formatUnambiguousDate(now);
@@ -192,7 +220,8 @@ Rules for each key:
 - "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
 - "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
 - "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above for startTime — never leave startTime blank. (endTime has one exception — see below.)
-- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too. ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
+- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too — a routine one-line mention like this is just a normal observation and does NOT by itself mean this is a contractor/PPM notification report (see the special case below, which requires an actual In-Charge Details block with a name and contact — don't apply that special case just because the word "contractor" appears somewhere). ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
+  HARD LIMIT: this paragraph must be AT MOST 2-3 sentences, no matter how long or detailed the raw note's description section is. If the raw note's description spans many sentences, compress and merge them down into 2-3 dense sentences — do not just trim words from each sentence and keep them all separate. This limit applies even to very long, multi-paragraph raw descriptions.
 - "issues": an ARRAY of strings, one string per genuine issue. STRICT RULE — only include an issue here if it has an actual ticket/reference number attached in the raw note (SR-, TN-, TK-, IR-, or similar). If a problem is mentioned but has NO reference number at all (e.g. "no SR shared", "no ticket raised", or just no number given), DO NOT include it in this array at all — leave it out completely, do not even mention it. Do not include recurring "still pending from before" phrasing or a general closing remarks sentence — this array is ONLY the current ticketed issues, nothing else, no summary line at the end. Each string should be a short fragment (not a sentence): object + fault + reference number, e.g. "Service lift Entrance-3 not working (SR-99673)". Drop connecting words like "is", "has", "there is". If there are genuinely no issues with a reference number, use an empty array [].
   SPECIAL CASE — contractor/PPM/maintenance notification reports: some raw notes aren't a security patrol with findings at all — they're a notification about a contractor or maintenance company carrying out work (e.g. mentions a company name doing PPM/testing/maintenance, a permit/PTW, and an "In-Charge Details" section with a name and contact number, usually signing off with "Regards"). For THIS type of note only: put the in-charge person's name and contact number VERBATIM (exactly as written, don't reformat the number) as the one and only entry in "issues" — this is exempt from the ticket-number rule above. Example entry: "In-Charge: Mr. Muhammad Ayaz, Contact: 0501231973".
 - "endTime": for a normal patrol report, follow the endTime rule above (use current time if missing). SPECIAL CASE — for a contractor/PPM/maintenance notification report (see the special case above — no natural start/end, it's just announcing ongoing work), set endTime to exactly "N/A" instead of a time, since there's no patrol end for this kind of note.
@@ -419,6 +448,15 @@ function tryRenderSecurityResult(rawText, finishReason){
   if(values[3] === '') values[3] = 'Not specified';
   if(values[5] === '') values[5] = 'Not specified';
 
+  // Contractor/PPM notification reports (detected by an "In-Charge:" style
+  // entry in issues) don't have their own real Patrol Type — override it
+  // with the strict time-window classification instead of whatever the
+  // model guessed (Subject line, etc.).
+  const isContractorNotification = issues.some(x => INCHARGE_PATTERN.test(x));
+  if(isContractorNotification){
+    values[3] = derivePatrolTypeFromTime(values[4]);
+  }
+
   // Defensively strip any stray line breaks the model might sneak in —
   // only OUR intentional <br> should control spacing, never the model's.
   for(let i=0;i<values.length;i++){
@@ -428,17 +466,32 @@ function tryRenderSecurityResult(rawText, finishReason){
   issues.length = 0;
   issues.push(...cleanIssues);
 
+  // Cap detailed issues at 5 — anything beyond that gets compressed down to
+  // just its ticket number in a trailing "Also:" line, rather than writing
+  // out every single issue in full (this is done in code, not left to the
+  // model, so the cutoff is always exactly 5, never off-by-one).
+  const MAX_DETAILED_ISSUES = 5;
+  let overflowLine = null;
+  if(issues.length > MAX_DETAILED_ISSUES){
+    const overflowTickets = issues.slice(MAX_DETAILED_ISSUES).map(x => {
+      const m = x.match(TICKET_PATTERN);
+      return m ? m[0].toUpperCase().replace(/\s+/g,'') : x;
+    });
+    overflowLine = `Also: (${overflowTickets.join(', ')})`;
+    issues.length = MAX_DETAILED_ISSUES;
+  }
+
   const descriptionText = values[6];
   const issuesText = issues.length
-    ? issues.map((x,i) => `${i+1}) ${x}`).join('  ')
-    : 'None';
+    ? issues.map((x,i) => `${i+1}) ${x}`).join('  ') + (overflowLine ? '  ' + overflowLine : '')
+    : (overflowLine || 'None');
 
   // Single line per cell, no headings — this is what gets copied to the clipboard.
   const plainValues = values.slice();
   plainValues[6] = descriptionText;
   plainValues[7] = issuesText;
   lastReportText = plainValues.join('\t');
-  lastStructured = { values: plainValues, description: descriptionText, issues: issues.slice() };
+  lastStructured = { values: plainValues, description: descriptionText, issues: issues.slice(), overflowLine };
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
@@ -532,11 +585,11 @@ function openExcelDB(){
   });
 }
 
-async function addReportRecord(values, description, issues){
+async function addReportRecord(values, description, issues, overflowLine){
   const db = await openExcelDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(EXCEL_STORE, 'readwrite');
-    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, description, issues, addedAt: Date.now()});
+    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, description, issues, overflowLine, addedAt: Date.now()});
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -584,7 +637,7 @@ refreshExcelCountLabel();
 async function addCurrentReportToExcel(){
   if(!lastReportText || !lastStructured) return;
   try{
-    await addReportRecord(lastStructured.values, lastStructured.description, lastStructured.issues);
+    await addReportRecord(lastStructured.values, lastStructured.description, lastStructured.issues, lastStructured.overflowLine);
     await refreshExcelCountLabel();
     const flag = document.getElementById('addedFlag');
     flag.style.display = 'block';
@@ -646,16 +699,22 @@ async function downloadTodayExcel(){
           };
           cell.alignment = Object.assign({}, templateCell.alignment, {wrapText:true, vertical:'top'});
         } else if(col === 8){
-          // Issues — bold heading, then one issue per line with a bold number
+          // Issues — bold heading, then one issue per line with a bold number,
+          // then an overflow line (ticket numbers only) if there were more than 5.
           const issuesArr = Array.isArray(record.issues) ? record.issues : null;
           const runs = [{ text: 'Issues\n', font: Object.assign({}, baseFont, {bold:true}) }];
           if(issuesArr && issuesArr.length){
             issuesArr.forEach((issue, idx) => {
+              const isLast = idx === issuesArr.length-1 && !record.overflowLine;
               runs.push({ text: `${idx+1}. `, font: Object.assign({}, baseFont, {bold:true}) });
-              runs.push({ text: issue + (idx < issuesArr.length-1 ? '\n' : ''), font: Object.assign({}, baseFont, {bold:false}) });
+              runs.push({ text: issue + (isLast ? '' : '\n'), font: Object.assign({}, baseFont, {bold:false}) });
             });
-          } else {
+          } else if(!record.overflowLine){
             runs.push({ text: issuesArr ? 'None' : (rowValues[7] ?? 'None'), font: Object.assign({}, baseFont, {bold:false}) });
+          }
+          if(record.overflowLine){
+            runs.push({ text: 'Also: ', font: Object.assign({}, baseFont, {bold:true}) });
+            runs.push({ text: record.overflowLine.replace(/^Also:\s*/,''), font: Object.assign({}, baseFont, {bold:false}) });
           }
           cell.value = { richText: runs };
           cell.alignment = Object.assign({}, templateCell.alignment, {wrapText:true, vertical:'top'});
@@ -669,7 +728,7 @@ async function downloadTodayExcel(){
       const estLines = text => Math.max(1, Math.ceil((text || '').length / 55));
       const descLines = 1 + estLines(record.description ?? rowValues[6] ?? '');
       const issuesArr2 = Array.isArray(record.issues) ? record.issues : [];
-      const issuesLines = 1 + (issuesArr2.length ? issuesArr2.reduce((sum,x) => sum + estLines(x), 0) : 1);
+      const issuesLines = 1 + (issuesArr2.length ? issuesArr2.reduce((sum,x) => sum + estLines(x), 0) : (record.overflowLine ? 0 : 1)) + (record.overflowLine ? estLines(record.overflowLine) : 0);
       const neededHeight = Math.max(descLines, issuesLines) * 15 + 6;
       row.height = Math.max(templateRow.height || 15, neededHeight);
       row.commit();
