@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Counter</title>
+<style>
+  :root{
+    --bg:#eef1f4;
+    --panel:#ffffff;
+    --ink:#1c2430;
+    --sub:#6b7684;
+    --line:#dbe0e6;
+    --c1:#2f6fed; /* Al-Forsan R/A - blue */
+    --c2:#e0862f; /* Boulevard Road West - amber */
+    --c3:#2fa86a; /* Jublee R/A - green */
+    --c4:#c23f6b; /* Al-Fursan E21 North - rose */
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, #d7dce2 1px, transparent 1px);
+    background-size:22px 22px;
+    color:var(--ink);
+    font-family:"Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 18px 40px;
+  }
+
+  header{
+    width:100%;
+    max-width:1180px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+    gap:14px;
+  }
+
+  .title-block h1{
+    margin:0;
+    font-size:26px;
+    letter-spacing:0.3px;
+  }
+  .title-block .eyebrow{
+    font-family:"Consolas","SFMono-Regular",monospace;
+    font-size:12px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--sub);
+    margin-bottom:4px;
+  }
+
+  .total-badge{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 18px;
+    text-align:right;
+    box-shadow:0 1px 2px rgba(20,30,40,0.04);
+  }
+  .total-badge .label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--sub);
+  }
+  .total-badge .num{
+    font-family:"Consolas","SFMono-Regular",monospace;
+    font-size:28px;
+    font-weight:700;
+    line-height:1.1;
+  }
+
+  .grid{
+    width:100%;
+    max-width:1180px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+  }
+
+  @media (max-width:900px){
+    .grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width:520px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 16px 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    position:relative;
+    box-shadow:0 1px 2px rgba(20,30,40,0.04);
+    border-top:4px solid var(--accent);
+    transition:box-shadow 120ms ease, transform 80ms ease;
+  }
+
+  .card.pulse{
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+    transform:translateY(-1px);
+  }
+
+  .card:nth-child(1){--accent:var(--c1);}
+  .card:nth-child(2){--accent:var(--c2);}
+  .card:nth-child(3){--accent:var(--c3);}
+  .card:nth-child(4){--accent:var(--c4);}
+
+  .loc-name{
+    font-size:14.5px;
+    font-weight:600;
+    text-align:center;
+    min-height:38px;
+    display:flex;
+    align-items:center;
+    line-height:1.25;
+  }
+
+  .count{
+    font-family:"Consolas","SFMono-Regular",monospace;
+    font-size:56px;
+    font-weight:700;
+    color:var(--accent);
+    margin:6px 0 4px;
+    letter-spacing:1px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .row{
+    display:flex;
+    gap:8px;
+    margin-top:8px;
+    width:100%;
+  }
+
+  button.step{
+    flex:1;
+    border:1px solid var(--line);
+    background:#f7f8fa;
+    color:var(--ink);
+    font-size:18px;
+    font-weight:700;
+    border-radius:8px;
+    padding:8px 0;
+    cursor:pointer;
+    transition:background 100ms ease;
+  }
+  button.step:hover{background:#eceff2;}
+  button.step:active{transform:scale(0.96);}
+  button.step.plus{color:var(--accent);border-color:var(--accent);}
+
+  .reset-one{
+    margin-top:8px;
+    background:none;
+    border:none;
+    color:var(--sub);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:2px;
+  }
+  .reset-one:hover{color:var(--ink);}
+
+  .keycap{
+    margin-top:14px;
+    width:42px;
+    height:42px;
+    border-radius:8px;
+    background:linear-gradient(180deg,#fbfbfc,#e9ebee);
+    border:1px solid var(--line);
+    border-bottom:3px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:"Consolas","SFMono-Regular",monospace;
+    font-weight:700;
+    font-size:17px;
+    color:var(--accent);
+    user-select:none;
+  }
+  .keycap.pressed{
+    border-bottom:1px solid var(--line);
+    transform:translateY(2px);
+    background:linear-gradient(180deg,#f0f1f3,#e2e4e8);
+  }
+  .keycap-label{
+    font-size:10px;
+    color:var(--sub);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-top:6px;
+  }
+
+  footer{
+    margin-top:26px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+
+  .reset-all{
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    padding:11px 22px;
+    border-radius:9px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .reset-all:hover{opacity:0.88;}
+
+  .hint{
+    font-size:12.5px;
+    color:var(--sub);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <div class="eyebrow">Live Session &middot; Not Saved</div>
+    <h1>Vehicle Counter</h1>
+  </div>
+  <div class="total-badge">
+    <div class="label">Total Vehicles</div>
+    <div class="num" id="totalNum">0</div>
+  </div>
+</header>
+
+<div class="grid" id="grid">
+  <!-- Cards injected by JS -->
+</div>
+
+<footer>
+  <button class="reset-all" id="resetAll">Reset All Counters</button>
+  <span class="hint">Press Z / X / C / V to count a vehicle at that location</span>
+</footer>
+
+<script>
+  const locations = [
+    { name: "Al-Forsan R/A", key: "Z" },
+    { name: "Boulevard Road West", key: "X" },
+    { name: "Jublee R/A", key: "C" },
+    { name: "Al-Fursan E21 North", key: "V" }
+  ];
+
+  const counts = [0, 0, 0, 0];
+  const grid = document.getElementById("grid");
+  const totalNum = document.getElementById("totalNum");
+
+  function buildCards(){
+    locations.forEach((loc, i) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.id = "card" + i;
+      card.innerHTML = `
+        <div class="loc-name">${loc.name}</div>
+        <div class="count" id="count${i}">0</div>
+        <div class="row">
+          <button class="step minus" data-i="${i}" aria-label="Decrease">&minus;</button>
+          <button class="step plus" data-i="${i}" aria-label="Increase">&plus;</button>
+        </div>
+        <button class="reset-one" data-i="${i}">reset</button>
+        <div class="keycap" id="key${i}">${loc.key}</div>
+        <div class="keycap-label">key</div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function updateDisplay(i){
+    document.getElementById("count" + i).textContent = counts[i];
+    const total = counts.reduce((a,b) => a+b, 0);
+    totalNum.textContent = total;
+  }
+
+  function increment(i){
+    counts[i]++;
+    updateDisplay(i);
+    flashCard(i);
+  }
+
+  function decrement(i){
+    counts[i] = Math.max(0, counts[i] - 1);
+    updateDisplay(i);
+  }
+
+  function flashCard(i){
+    const card = document.getElementById("card" + i);
+    const key = document.getElementById("key" + i);
+    card.classList.add("pulse");
+    key.classList.add("pressed");
+    setTimeout(() => {
+      card.classList.remove("pulse");
+      key.classList.remove("pressed");
+    }, 130);
+  }
+
+  buildCards();
+
+  grid.addEventListener("click", (e) => {
+    const target = e.target;
+    if(target.classList.contains("plus")){
+      increment(Number(target.dataset.i));
+    } else if(target.classList.contains("minus")){
+      decrement(Number(target.dataset.i));
+    } else if(target.classList.contains("reset-one")){
+      const i = Number(target.dataset.i);
+      counts[i] = 0;
+      updateDisplay(i);
+    }
+  });
+
+  document.getElementById("resetAll").addEventListener("click", () => {
+    for(let i=0;i<counts.length;i++){
+      counts[i] = 0;
+      updateDisplay(i);
+    }
+  });
+
+  const keyMap = { "z": 0, "x": 1, "c": 2, "v": 3 };
+
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if(k in keyMap){
+      increment(keyMap[k]);
+    }
+  });
+</script>
+
+</body>
+</html>
