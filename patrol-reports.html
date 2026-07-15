@@ -188,13 +188,19 @@ function derivePatrolTypeFromTime(timeStr){
   return 'Hourly';
 }
 
-function buildSecurityPrompt(raw){
+function buildSecurityPrompt(raw, isPatrolReport){
   const now = new Date();
   const todayDate = formatUnambiguousDate(now);
   const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
 
+  const modeInstruction = isPatrolReport
+    ? `REPORT TYPE (already determined, do not second-guess this): this raw note is a SECURITY PATROL report — it mentions patrolling. Follow the "issues" rules for patrol reports below.`
+    : `REPORT TYPE (already determined, do not second-guess this): this raw note does NOT mention patrolling anywhere — it is a CONTRACTOR/MAINTENANCE/PPM activity notification instead. Follow the "issues" rules for contractor/notification reports below, not the patrol ones.`;
+
   return `You are formatting Expo City Security patrol reports so they can be pasted directly into an Excel tracker as ONE ROW. The Excel sheet has these exact columns in this exact order:
 S/N | Date | Security Call Sign | Patrol Type | Start Time | Location | Description of Activity / Finding(s) | Remarks | End Time
+
+${modeInstruction}
 
 Raw patrol notes come in different styles each time — sometimes labeled fields like "**Date:*", sometimes plain prose, sometimes everything as bullet points with no explicit field labels at all, sometimes different section names. Read for INTENT, not exact wording: figure out what is the general description of the patrol/area, what are activities, and what are findings/pending issues/observations, regardless of how they're formatted or labeled in the raw text, then map them into the correct fields below.
 
@@ -220,11 +226,12 @@ Rules for each key:
 - "callSign": short clean value from the raw note. It may appear under different labels — "Security Call Sign", "Radio Call Sign", "Call Sign", or simply as a name/code signing off the report at the very end (e.g. after "Regards" or on its own last line). Use whatever appears in that position. If genuinely not stated, leave blank.
 - "patrolType", "location": short clean values from the raw note (patrol type may appear as a title like "INITIAL PATROL REPORT" or under "Subject:"). If genuinely not stated and cannot be reasonably inferred from context, leave blank.
 - "startTime", "endTime": use the times stated in the raw note. If the raw note gives a single combined range instead of two separate labels (e.g. "Time: 18:00-20:35hrs"), split it — the first value is startTime, the second is endTime. If genuinely no time is stated at all, use the current time given above for startTime — never leave startTime blank. (endTime has one exception — see below.)
-- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too — a routine one-line mention like this is just a normal observation and does NOT by itself mean this is a contractor/PPM notification report (see the special case below, which requires an actual In-Charge Details block with a name and contact — don't apply that special case just because the word "contractor" appears somewhere). ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
+- "description": a short paragraph covering the general patrol/area notes AND routine observations — anything that is just describing normal status (something is open, operating, clear, calm, minimal, functioning, off/on as expected, no problems noted, etc.), even if the raw note bullets these under a heading like "Observations." If the raw note mentions any contractor activity status (e.g. "Contractor activities: Negative", or details of contractor work happening/observed), include that too — this is just a normal observation for the description field, regardless of which report type this is (see REPORT TYPE above, already determined). ALSO include any other information anywhere in the raw note that seems genuinely important context but isn't a specific actionable issue (e.g. notable counts/totals, VIP or event mentions, access/security status, anything a supervisor reading only this paragraph would need to know) — if you're unsure whether something belongs here or is minor enough to skip, include it rather than drop it. Merge everything into ONE small, tight paragraph. Do NOT start this field with the word "Description" or any label — just the paragraph itself. Clean up wording but stay close to what's said — don't invent detail.
   HARD LIMIT: this paragraph must be AT MOST 2-3 sentences, no matter how long or detailed the raw note's description section is. If the raw note's description spans many sentences, compress and merge them down into 2-3 dense sentences — do not just trim words from each sentence and keep them all separate. This limit applies even to very long, multi-paragraph raw descriptions.
-- "issues": an ARRAY of strings, one string per genuine issue. STRICT RULE — only include an issue here if it has an actual ticket/reference number attached in the raw note (SR-, TN-, TK-, IR-, or similar). If a problem is mentioned but has NO reference number at all (e.g. "no SR shared", "no ticket raised", or just no number given), DO NOT include it in this array at all — leave it out completely, do not even mention it. Do not include recurring "still pending from before" phrasing or a general closing remarks sentence — this array is ONLY the current ticketed issues, nothing else, no summary line at the end. Each string should be a short fragment (not a sentence): object + fault + reference number, e.g. "Service lift Entrance-3 not working (SR-99673)". Drop connecting words like "is", "has", "there is". If there are genuinely no issues with a reference number, use an empty array [].
-  SPECIAL CASE — contractor/PPM/maintenance notification reports: some raw notes aren't a security patrol with findings at all — they're a notification about a contractor or maintenance company carrying out work (e.g. mentions a company name doing PPM/testing/maintenance, a permit/PTW, and an "In-Charge Details" section with a name and contact number, usually signing off with "Regards"). For THIS type of note only: put the in-charge person's name and contact number VERBATIM (exactly as written, don't reformat the number) as the one and only entry in "issues" — this is exempt from the ticket-number rule above. Example entry: "In-Charge: Mr. Muhammad Ayaz, Contact: 0501231973".
-- "endTime": for a normal patrol report, follow the endTime rule above (use current time if missing). SPECIAL CASE — for a contractor/PPM/maintenance notification report (see the special case above — no natural start/end, it's just announcing ongoing work), set endTime to exactly "N/A" instead of a time, since there's no patrol end for this kind of note.
+- "issues": an ARRAY of strings.${isPatrolReport ? `
+  This is a PATROL report, so: only include an issue here if it has an actual ticket/reference number attached in the raw note (SR-, TN-, TK-, IR-, or similar). If a problem is mentioned but has NO reference number at all (e.g. "no SR shared", "no ticket raised", or just no number given), DO NOT include it in this array at all — leave it out completely, do not even mention it. Do not include recurring "still pending from before" phrasing or a general closing remarks sentence — this array is ONLY the current ticketed issues, nothing else, no summary line at the end. Each string should be a short fragment (not a sentence): object + fault + reference number, e.g. "Service lift Entrance-3 not working (SR-99673)". Drop connecting words like "is", "has", "there is". If there are genuinely no issues with a reference number, use an empty array [].` : `
+  This is a CONTRACTOR/PPM/MAINTENANCE NOTIFICATION report (not a patrol), so: do NOT apply any ticket-number filter here. Instead, extract EVERY available detail about the in-charge person(s) from the raw note's "In-Charge Details" section (or similarly named section) — Name, Contact, Company, Designation, or anything else listed there — one field per array entry, verbatim (don't reformat phone numbers), in the same order they appear in the raw note. Include ALL of them, not just name and contact. Example: ["Name: Mr. Muhammad Ayaz", "Contact: 0501231973"]. If there is genuinely no in-charge/contact information anywhere in the raw note, use an empty array [].`}
+- "endTime": ${isPatrolReport ? `follow the startTime/endTime rule above (use current time if missing).` : `this is a contractor/PPM/maintenance notification report — no natural start/end, it's just announcing ongoing work — so set endTime to exactly "N/A" instead of a time.`}
 
 BE CONCISE THROUGHOUT. Do not editorialize, do not add explanation or description that is not already stated in the raw note, and never mix content from the activity lines into the description. Your job is to clean up spelling/grammar and sort things into the right columns, not to write new content. Even if the raw note is much longer (more activities, more findings), condense it to that same tight style; do not simply lengthen the output to match the raw note's length.
 
@@ -296,17 +303,17 @@ SB202
 (Current date/time context for this example: Date 10-Jul-2026, Time 14:20hrs)
 
 Correct output — no patrol start/end here, so startTime uses the current time, endTime is "N/A", and the in-charge contact goes into issues verbatim since there's no ticketed problem to report:
-{"sn":"","date":"10-Jul-2026","callSign":"SB202","patrolType":"Alarm Check Valve PPM","startTime":"14:20hrs","location":"Sustainability Basement","description":"SIBCA is conducting the Alarm Check Valve PPM in the Sustainability Basement. FACP systems in Zones 1 to 6 have been temporarily disabled under a valid PTW.","issues":["In-Charge: Mr. Muhammad Ayaz, Contact: 0 50 123 1973"],"endTime":"N/A"}
+{"sn":"","date":"10-Jul-2026","callSign":"SB202","patrolType":"Alarm Check Valve PPM","startTime":"14:20hrs","location":"Sustainability Basement","description":"SIBCA is conducting the Alarm Check Valve PPM in the Sustainability Basement. FACP systems in Zones 1 to 6 have been temporarily disabled under a valid PTW.","issues":["Name: Mr. Muhammad Ayaz","Contact: 0 50 123 1973"],"endTime":"N/A"}
 
 CRITICAL — except "sn" (which always stays empty), every other field must have a value (issues can be an empty array, that's fine). Never leave callSign, patrolType, or location blank if there is ANY reasonable way to infer them from the raw note (a title, a sign-off name, a heading). Only if a field is truly and completely absent with no clue anywhere in the raw note should it be left empty.
 
 CRITICAL — do not skip these, check them last before you answer:
 - callSign must NOT be left empty if the raw note has ANY name or code signing off the report — even if there's no label like "Call Sign" at all, a name/code sitting alone on the last line or after "Regards" still counts and must go in callSign.
 - date must never be empty — use the current date given above if the raw note doesn't state one.
-- startTime and endTime must never be empty — use the current time given above if the raw note doesn't state them, or split a combined range like "18:00-20:35hrs".
-- issues must NEVER include a problem that has no reference/ticket number — drop those entirely, don't mention them anywhere in issues.
+- startTime must never be empty — use the current time given above if the raw note doesn't state it, or split a combined range like "18:00-20:35hrs".
+${isPatrolReport ? `- issues must NEVER include a problem that has no reference/ticket number — drop those entirely, don't mention them anywhere in issues.` : `- issues must contain every available in-charge detail field from the raw note, each as its own array entry — do not skip any, do not merge multiple fields into one entry.`}
 
-Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph. issues = ONLY ticketed problems, each as short as possible, no ticket = don't include it. Output ONLY the JSON object, nothing else:
+Now reformat this new raw input the same way. Description = general/routine notes condensed to one short paragraph (2-3 sentences max). ${isPatrolReport ? 'issues = ONLY ticketed problems, each as short as possible, no ticket = don\'t include it.' : 'issues = every available in-charge detail field, one per array entry, verbatim.'} Output ONLY the JSON object, nothing else:
 """
 ${raw}
 """`;
@@ -352,7 +359,8 @@ async function generateReport(){
   document.getElementById('proc').style.display = 'block';
   document.getElementById('genBtn').disabled = true;
 
-  const prompt = buildSecurityPrompt(raw);
+  const isPatrolReport = /patrol/i.test(raw);
+  const prompt = buildSecurityPrompt(raw, isPatrolReport);
 
   let lastDiag = '';
 
@@ -375,7 +383,7 @@ async function generateReport(){
         continue; // retry
       }
 
-      const ok = tryRenderSecurityResult(rawText, finishReason);
+      const ok = tryRenderSecurityResult(rawText, finishReason, isPatrolReport);
       if(ok){
         document.getElementById('proc').style.display = 'none';
         document.getElementById('genBtn').disabled = false;
@@ -400,10 +408,9 @@ async function generateReport(){
 
 const SECURITY_COLUMNS = ['S/N','Date','Security Call Sign','Patrol Type','Start Time','Location','Description of Activity / Finding(s)','Remarks','End Time'];
 const TICKET_PATTERN = /\b(SR|TN|TK|IR)[\s.\-]?\d{3,}/i;
-const INCHARGE_PATTERN = /in-?charge|contact\s*[:\-]/i;
 
 
-function tryRenderSecurityResult(rawText, finishReason){
+function tryRenderSecurityResult(rawText, finishReason, isPatrolReport){
   // Strip accidental code fences some models add despite instructions
   let cleaned = rawText.trim();
   if(cleaned.startsWith('```')){
@@ -421,11 +428,11 @@ function tryRenderSecurityResult(rawText, finishReason){
   if(!description) return false;
 
   const rawIssues = Array.isArray(obj.issues) ? obj.issues : [];
-  // Defensive filter — drop any issue that doesn't actually contain a
-  // reference/ticket number, in case the model included one anyway.
+  // Patrol mode: only keep entries with a real ticket number.
+  // Contractor mode: keep everything as-is (in-charge detail fields, no ticket needed).
   const issues = rawIssues
     .map(x => (x ?? '').toString().trim())
-    .filter(x => x && (TICKET_PATTERN.test(x) || INCHARGE_PATTERN.test(x)));
+    .filter(x => x && (isPatrolReport ? TICKET_PATTERN.test(x) : true));
 
   const values = SECURITY_KEYS.map(k => {
     if(k === 'issues') return ''; // handled separately below
@@ -443,17 +450,15 @@ function tryRenderSecurityResult(rawText, finishReason){
   const nowTime = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',hour12:false}) + 'hrs';
   if(values[1] === '') values[1] = todayDate;
   if(values[4] === '') values[4] = nowTime;
+  if(!isPatrolReport) values[8] = 'N/A'; // contractor notification — no natural end time
   if(values[8] === '') values[8] = nowTime;
   if(values[2] === '') values[2] = 'Not specified';
   if(values[3] === '') values[3] = 'Not specified';
   if(values[5] === '') values[5] = 'Not specified';
 
-  // Contractor/PPM notification reports (detected by an "In-Charge:" style
-  // entry in issues) don't have their own real Patrol Type — override it
-  // with the strict time-window classification instead of whatever the
-  // model guessed (Subject line, etc.).
-  const isContractorNotification = issues.some(x => INCHARGE_PATTERN.test(x));
-  if(isContractorNotification){
+  // Contractor/PPM notification reports don't have their own real Patrol
+  // Type — override it with the strict time-window classification.
+  if(!isPatrolReport){
     values[3] = derivePatrolTypeFromTime(values[4]);
   }
 
@@ -466,13 +471,12 @@ function tryRenderSecurityResult(rawText, finishReason){
   issues.length = 0;
   issues.push(...cleanIssues);
 
-  // Cap detailed issues at 5 — anything beyond that gets compressed down to
-  // just its ticket number in a trailing "Also:" line, rather than writing
-  // out every single issue in full (this is done in code, not left to the
-  // model, so the cutoff is always exactly 5, never off-by-one).
+  // Cap detailed issues at 5 — PATROL MODE ONLY. Anything beyond that gets
+  // compressed down to just its ticket number in a trailing "Also:" line.
+  // Contractor mode never caps — every in-charge detail field is kept.
   const MAX_DETAILED_ISSUES = 5;
   let overflowLine = null;
-  if(issues.length > MAX_DETAILED_ISSUES){
+  if(isPatrolReport && issues.length > MAX_DETAILED_ISSUES){
     const overflowTickets = issues.slice(MAX_DETAILED_ISSUES).map(x => {
       const m = x.match(TICKET_PATTERN);
       return m ? m[0].toUpperCase().replace(/\s+/g,'') : x;
@@ -482,16 +486,19 @@ function tryRenderSecurityResult(rawText, finishReason){
   }
 
   const descriptionText = values[6];
-  const issuesText = issues.length
-    ? issues.map((x,i) => `${i+1}) ${x}`).join('  ') + (overflowLine ? '  ' + overflowLine : '')
-    : (overflowLine || 'None');
+  const issuesHeading = isPatrolReport ? 'Issues' : 'In-Charge Person Details';
+  const issuesText = isPatrolReport
+    ? (issues.length
+        ? issues.map((x,i) => `${i+1}) ${x}`).join('  ') + (overflowLine ? '  ' + overflowLine : '')
+        : (overflowLine || 'None'))
+    : (issues.length ? issues.join('; ') : 'Not available');
 
   // Single line per cell, no headings — this is what gets copied to the clipboard.
   const plainValues = values.slice();
   plainValues[6] = descriptionText;
   plainValues[7] = issuesText;
   lastReportText = plainValues.join('\t');
-  lastStructured = { values: plainValues, description: descriptionText, issues: issues.slice(), overflowLine };
+  lastStructured = { values: plainValues, description: descriptionText, issues: issues.slice(), overflowLine, isPatrolReport, issuesHeading };
 
   // Build a readable label:value preview so you can check nothing is missing
   const outBox = document.getElementById('outBox');
@@ -504,7 +511,7 @@ function tryRenderSecurityResult(rawText, finishReason){
     const row = document.createElement('div');
     row.style.marginBottom = '10px';
     const lbl = document.createElement('div');
-    lbl.textContent = label;
+    lbl.textContent = i === 7 ? `Remarks (${issuesHeading})` : label;
     lbl.style.fontWeight = '700';
     lbl.style.fontSize = '0.8em';
     lbl.style.color = '#8a8a90';
@@ -585,11 +592,11 @@ function openExcelDB(){
   });
 }
 
-async function addReportRecord(values, description, issues, overflowLine){
+async function addReportRecord(values, description, issues, overflowLine, isPatrolReport, issuesHeading){
   const db = await openExcelDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(EXCEL_STORE, 'readwrite');
-    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, description, issues, overflowLine, addedAt: Date.now()});
+    tx.objectStore(EXCEL_STORE).add({dateKey: todayKey(), values, description, issues, overflowLine, isPatrolReport, issuesHeading, addedAt: Date.now()});
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -637,7 +644,7 @@ refreshExcelCountLabel();
 async function addCurrentReportToExcel(){
   if(!lastReportText || !lastStructured) return;
   try{
-    await addReportRecord(lastStructured.values, lastStructured.description, lastStructured.issues, lastStructured.overflowLine);
+    await addReportRecord(lastStructured.values, lastStructured.description, lastStructured.issues, lastStructured.overflowLine, lastStructured.isPatrolReport, lastStructured.issuesHeading);
     await refreshExcelCountLabel();
     const flag = document.getElementById('addedFlag');
     flag.style.display = 'block';
@@ -699,18 +706,26 @@ async function downloadTodayExcel(){
           };
           cell.alignment = Object.assign({}, templateCell.alignment, {wrapText:true, vertical:'top'});
         } else if(col === 8){
-          // Issues — bold heading, then one issue per line with a bold number,
-          // then an overflow line (ticket numbers only) if there were more than 5.
+          // Heading and format depend on whether this was a patrol report
+          // (numbered ticketed issues) or a contractor notification
+          // (plain list of in-charge detail fields, no numbering, no cap).
+          const isPatrol = record.isPatrolReport !== false; // older saved records had no flag — treat as patrol
+          const heading = record.issuesHeading || (isPatrol ? 'Issues' : 'In-Charge Person Details');
           const issuesArr = Array.isArray(record.issues) ? record.issues : null;
-          const runs = [{ text: 'Issues\n', font: Object.assign({}, baseFont, {bold:true}) }];
+          const runs = [{ text: heading + '\n', font: Object.assign({}, baseFont, {bold:true}) }];
+
           if(issuesArr && issuesArr.length){
             issuesArr.forEach((issue, idx) => {
-              const isLast = idx === issuesArr.length-1 && !record.overflowLine;
-              runs.push({ text: `${idx+1}. `, font: Object.assign({}, baseFont, {bold:true}) });
-              runs.push({ text: issue + (isLast ? '' : '\n'), font: Object.assign({}, baseFont, {bold:false}) });
+              const isLastPlain = idx === issuesArr.length-1 && !record.overflowLine;
+              if(isPatrol){
+                runs.push({ text: `${idx+1}. `, font: Object.assign({}, baseFont, {bold:true}) });
+                runs.push({ text: issue + (isLastPlain ? '' : '\n'), font: Object.assign({}, baseFont, {bold:false}) });
+              } else {
+                runs.push({ text: issue + (isLastPlain ? '' : '\n'), font: Object.assign({}, baseFont, {bold:false}) });
+              }
             });
           } else if(!record.overflowLine){
-            runs.push({ text: issuesArr ? 'None' : (rowValues[7] ?? 'None'), font: Object.assign({}, baseFont, {bold:false}) });
+            runs.push({ text: issuesArr ? (isPatrol ? 'None' : 'Not available') : (rowValues[7] ?? 'None'), font: Object.assign({}, baseFont, {bold:false}) });
           }
           if(record.overflowLine){
             runs.push({ text: 'Also: ', font: Object.assign({}, baseFont, {bold:true}) });
