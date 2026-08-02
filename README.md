@@ -59,7 +59,7 @@ The app uses Firebase with the following configuration:
 - **Auth Domain**: facp-assistant.firebaseapp.com
 - **Storage Bucket**: facp-assistant.firebasestorage.app
 
-**Note**: The Firebase config is already embedded in both HTML files. If you need to change it, update the `firebaseConfig` object in both files.
+**Note**: The Firebase config is fetched at runtime from `/api/firebase-config`, a Vercel serverless function that reads it from environment variables — it is not hardcoded in the HTML files. To change it, update the environment variables in your Vercel project settings.
 
 ### 2. Firestore Setup
 
@@ -233,10 +233,7 @@ The app includes comprehensive error handling for:
 
 ## Security Considerations
 
-1. **API Keys**: Currently exposed in frontend (for demo). For production:
-   - Use Firebase Security Rules
-   - Implement backend proxy
-   - Use environment variables
+1. **API Keys**: Served via a backend proxy (`/api/firebase-config`) reading from environment variables — not hardcoded in the frontend. Firebase Security Rules should still be used to control actual data access.
 
 2. **Authentication**: 
    - Enforce strong passwords
