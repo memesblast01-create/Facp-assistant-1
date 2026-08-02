@@ -398,14 +398,7 @@ button:hover {
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "facp-assistant.firebaseapp.com",
-  projectId: "facp-assistant",
-  storageBucket: "facp-assistant.firebasestorage.app",
-  messagingSenderId: "771947694967",
-  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
-};
+let firebaseConfig = null;
 
 let buildingsData = [];
 let currentFilter = 'all';
@@ -439,6 +432,7 @@ window.onload = async () => {
   } catch (e) {}
 
   try {
+    firebaseConfig = await fetch('/api/firebase-config').then(r => r.json());
     const app = getFirebaseApp();
     const db = firebase.firestore(app);
 

@@ -201,23 +201,18 @@ th { background: rgba(37, 211, 102, 0.1); color: #25D366; }
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "facp-assistant.firebaseapp.com",
-  projectId: "facp-assistant",
-  storageBucket: "facp-assistant.firebasestorage.app",
-  messagingSenderId: "771947694967",
-  appId: "1:771947694967:web:4784fd12ab43dfec6c2f72"
-};
-
+let firebaseConfig = null;
 let db, auth;
 let currentUserRole = 'owner';
 
-try {
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-  auth = firebase.auth();
-} catch(e) { console.error(e); }
+(async function initFirebase() {
+  try {
+    firebaseConfig = await fetch('/api/firebase-config').then(r => r.json());
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+  } catch(e) { console.error(e); }
+})();
 
 async function login() {
   const email = document.getElementById("email").value.trim();
